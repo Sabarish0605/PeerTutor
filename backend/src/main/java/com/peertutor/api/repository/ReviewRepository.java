@@ -8,6 +8,6 @@ import java.util.List;
 
 @Repository
 public interface ReviewRepository extends JpaRepository<Review, Long> {
-    // Allows us to find all reviews for a specific tutor via the booking connection
-    List<Review> findByBookingTutorId(Long tutorId);
+    // NEW PATH: Finds reviews by looking at Booking -> Course -> Tutor -> Id
+    List<Review> findByBookingCourseTutorId(Long tutorId);
 }

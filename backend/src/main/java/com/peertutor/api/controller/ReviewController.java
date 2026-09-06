@@ -15,11 +15,14 @@ public class ReviewController {
 
     private final ReviewService reviewService;
 
-    @PostMapping("/student/{studentId}")
-    public ResponseEntity<Review> createReview(
+    // UPGRADED: Now requires the bookingId in the URL to link the review properly
+    @PostMapping("/student/{studentId}/booking/{bookingId}")
+    public ResponseEntity<Review> submitReview(
             @PathVariable Long studentId,
+            @PathVariable Long bookingId,
             @Valid @RequestBody ReviewRequest request
     ) {
-        return ResponseEntity.ok(reviewService.createReview(studentId, request));
+        // Calls the correct method name that we set up in ReviewService
+        return ResponseEntity.ok(reviewService.submitReview(studentId, bookingId, request));
     }
 }

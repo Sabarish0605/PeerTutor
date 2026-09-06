@@ -1,44 +1,46 @@
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import Navbar from './components/Navbar';
+import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import StudentDashboard from './pages/StudentDashboard';
 import TutorDashboard from './pages/TutorDashboard';
 import TutorProfileSetup from './pages/TutorProfileSetup';
-import Home from './pages/Home';
 import TutorProfile from './pages/TutorProfile';
+import MyLearning from './pages/MyLearning';
+
 function App() {
   return (
       <AuthProvider>
         <Router>
-          <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
+          <div className="min-h-screen bg-gray-50 text-gray-900 font-sans flex flex-col">
 
-            {/* Updated Navbar with functional links */}
-            <nav className="bg-blue-600 text-white p-4 shadow-md">
-              <div className="container mx-auto flex justify-between items-center">
-                <Link to="/" className="font-bold text-xl">PeerTutor</Link>
-                <div className="space-x-4">
-                  <Link to="/login" className="hover:text-blue-200">Login</Link>
-                  <Link to="/register" className="bg-white text-blue-600 px-4 py-1 rounded-full font-medium hover:bg-blue-50">Sign Up</Link>
-                </div>
-              </div>
-            </nav>
+            {/* Our new smart Navbar */}
+            <Navbar />
 
-            <main className="container mx-auto px-4 py-8">
+            <main className="container mx-auto px-4 py-8 flex-grow">
               <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/tutor/:id" element={<TutorProfile />} />
-
-                {/* Point to our new actual components! */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
 
+                {/* FIXED: Correct JSX syntax for the element prop */}
+                <Route path="/my-learning" element={<MyLearning />} />
+
+                {/* Protected Routes */}
                 <Route path="/student/dashboard" element={<StudentDashboard />} />
                 <Route path="/tutor/dashboard" element={<TutorDashboard />} />
                 <Route path="/tutor/setup" element={<TutorProfileSetup />} />
+                <Route path="/tutor/:id" element={<TutorProfile />} />
+
               </Routes>
             </main>
 
+            {/* A simple footer for polish */}
+            <footer className="bg-gray-800 text-gray-400 text-center py-6 mt-12 text-sm">
+              <p>© 2026 PeerTutor. Built by students, for students.</p>
+            </footer>
           </div>
         </Router>
       </AuthProvider>

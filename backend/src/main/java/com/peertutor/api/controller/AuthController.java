@@ -23,6 +23,7 @@ public class AuthController {
     public ResponseEntity<AuthResponse> register(
             @Valid @RequestBody RegisterRequest request
     ) {
+        // The controller stays clean. It passes the request to the service layer.
         return ResponseEntity.ok(authService.register(request));
     }
 

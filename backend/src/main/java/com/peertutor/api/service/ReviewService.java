@@ -2,7 +2,6 @@ package com.peertutor.api.service;
 
 import com.peertutor.api.dto.ReviewRequest;
 import com.peertutor.api.entity.Booking;
-import com.peertutor.api.entity.BookingStatus;
 import com.peertutor.api.entity.Review;
 import com.peertutor.api.entity.TutorProfile;
 import com.peertutor.api.repository.BookingRepository;
@@ -10,7 +9,6 @@ import com.peertutor.api.repository.ReviewRepository;
 import com.peertutor.api.repository.TutorProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -22,23 +20,15 @@ public class ReviewService {
     private final BookingRepository bookingRepository;
     private final TutorProfileRepository tutorProfileRepository;
 
-    @Transactional
-    public Review createReview(Long studentId, ReviewRequest request) {
-        Booking booking = bookingRepository.findById(request.getBookingId())
+    public Review submitReview(Long studentId, Long bookingId, ReviewRequest request) {
+        Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
 
-        // Security check: Only the student who booked it can review it
         if (!booking.getStudent().getId().equals(studentId)) {
-            throw new RuntimeException("You can only review your own sessions");
+            throw new RuntimeException("Unauthorized: This is not your booking.");
         }
 
-        // For MVP: We assume the session is COMPLETED if they are reviewing it.
-        // Let's update the booking status to COMPLETED if it isn't already.
-        if (booking.getStatus() != BookingStatus.COMPLETED) {
-            booking.setStatus(BookingStatus.COMPLETED);
-            bookingRepository.save(booking);
-        }
-
+        // We only need the booking, rating, and comment!
         Review review = Review.builder()
                 .booking(booking)
                 .rating(request.getRating())
@@ -47,35 +37,24 @@ public class ReviewService {
 
         Review savedReview = reviewRepository.save(review);
 
-        // Update the Tutor's Ranking & Reputation
-        updateTutorReputation(booking.getTutor().getId());
+        // Grab the tutor from the course to update their rating
+        TutorProfile tutor = booking.getCourse().getTutor();
+        updateTutorRating(tutor);
 
         return savedReview;
     }
 
-    private void updateTutorReputation(Long tutorId) {
-        TutorProfile tutor = tutorProfileRepository.findById(tutorId)
-                .orElseThrow(() -> new RuntimeException("Tutor not found"));
-
-        List<Review> tutorReviews = reviewRepository.findByBookingTutorId(tutorId);
-
+    private void updateTutorRating(TutorProfile tutor) {
+        // Using the updated repository method
+        List<Review> tutorReviews = reviewRepository.findByBookingCourseTutorId(tutor.getId());
         if (tutorReviews.isEmpty()) return;
 
-        // Calculate average rating
-        double totalRating = 0;
-        for (Review r : tutorReviews) {
-            totalRating += r.getRating();
-        }
-        double averageRating = totalRating / tutorReviews.size();
+        double averageRating = tutorReviews.stream()
+                .mapToInt(Review::getRating)
+                .average()
+                .orElse(0.0);
 
-        // Basic Reputation Formula: (Average Rating) * (Number of Completed Sessions)
-        int completedSessions = tutorReviews.size();
-        double reputationScore = averageRating * completedSessions;
-
-        tutor.setRating(Math.round(averageRating * 10.0) / 10.0); // Round to 1 decimal
-        tutor.setCompletedSessions(completedSessions);
-        tutor.setReputationScore(reputationScore);
-
+        tutor.setRating(Math.round(averageRating * 10.0) / 10.0);
         tutorProfileRepository.save(tutor);
     }
 }

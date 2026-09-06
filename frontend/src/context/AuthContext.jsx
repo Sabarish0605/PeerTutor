@@ -1,22 +1,34 @@
 import { createContext, useState, useEffect } from 'react';
+import api from '../services/api';
 
 export const AuthContext = createContext();
 
-export const AuthProvider = ({ children }) => {
+export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-    // Check if user is already logged in when the app loads
     useEffect(() => {
+        // Check if token and user data exist in localStorage on load
         const storedUser = localStorage.getItem('user');
-        if (storedUser) {
+        const token = localStorage.getItem('token');
+
+        if (storedUser && token) {
             setUser(JSON.parse(storedUser));
         }
+        setLoading(false);
     }, []);
 
     const login = (userData, token) => {
+        // Create a normalized user object so 'user.id' ALWAYS works,
+        // even if the backend calls it 'userId'
+        const normalizedUser = {
+            ...userData,
+            id: userData.id || userData.userId
+        };
+
         localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(userData));
-        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(normalizedUser));
+        setUser(normalizedUser);
     };
 
     const logout = () => {
@@ -26,8 +38,8 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, logout }}>
-            {children}
+        <AuthContext.Provider value={{ user, login, logout, loading }}>
+            {!loading && children}
         </AuthContext.Provider>
     );
-};
+}

@@ -1,11 +1,13 @@
 package com.peertutor.api.service;
 
-import com.peertutor.api.dto.BookingRequest;
-import com.peertutor.api.entity.*;
-import com.peertutor.api.repository.*;
+import com.peertutor.api.entity.Booking;
+import com.peertutor.api.entity.Course;
+import com.peertutor.api.entity.User;
+import com.peertutor.api.repository.BookingRepository;
+import com.peertutor.api.repository.CourseRepository;
+import com.peertutor.api.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -14,43 +16,34 @@ import java.util.List;
 public class BookingService {
 
     private final BookingRepository bookingRepository;
-    private final AvailabilityRepository availabilityRepository;
     private final UserRepository userRepository;
-    private final TutorProfileRepository tutorProfileRepository;
-    private final SubjectRepository subjectRepository;
+    private final CourseRepository courseRepository;
 
-    @Transactional
-    public Booking createBooking(Long studentId, BookingRequest request) {
+    public Booking createBooking(Long studentId, Long courseId) {
+
+        // 1. Fetch the Student and the Course
         User student = userRepository.findById(studentId)
                 .orElseThrow(() -> new RuntimeException("Student not found"));
 
-        TutorProfile tutor = tutorProfileRepository.findById(request.getTutorId())
-                .orElseThrow(() -> new RuntimeException("Tutor not found"));
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new RuntimeException("Course not found"));
 
-        Subject subject = subjectRepository.findById(request.getSubjectId())
-                .orElseThrow(() -> new RuntimeException("Subject not found"));
-
-        Availability slot = availabilityRepository.findById(request.getAvailabilityId())
-                .orElseThrow(() -> new RuntimeException("Availability slot not found"));
-
-        // Guardrail against double booking
-        if (slot.isBooked()) {
-            throw new RuntimeException("This slot is already booked!");
+        // 2. Guardrail: Prevent double-booking
+        if (bookingRepository.existsByStudentIdAndCourseId(studentId, courseId)) {
+            throw new RuntimeException("You are already enrolled in this course!");
         }
 
-        // Mark the slot as booked
-        slot.setBooked(true);
-        availabilityRepository.save(slot);
+        // 3. Guardrail: Check seat capacity
+        long currentEnrollments = bookingRepository.countByCourseId(courseId);
+        if (currentEnrollments >= course.getMaxPeers()) {
+            throw new RuntimeException("Sorry, this batch is completely full!");
+        }
 
-        // Create the booking
+        // 4. Create the Enrollment
         Booking booking = Booking.builder()
                 .student(student)
-                .tutor(tutor)
-                .subject(subject)
-                .sessionDate(request.getSessionDate())
-                .startTime(slot.getStartTime())
-                .endTime(slot.getEndTime())
-                .status(BookingStatus.BOOKED)
+                .course(course)
+                .status("ACTIVE")
                 .build();
 
         return bookingRepository.save(booking);

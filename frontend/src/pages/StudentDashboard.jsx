@@ -1,134 +1,153 @@
-import { useContext, useEffect, useState } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
 export default function StudentDashboard() {
-    const { user, logout } = useContext(AuthContext);
-    const navigate = useNavigate();
+    const { user } = useContext(AuthContext); // Grabs the logged-in student
 
-    const [subjects, setSubjects] = useState([]);
-    const [bookings, setBookings] = useState([]);
-    const [reviewText, setReviewText] = useState('');
-    const [rating, setRating] = useState(5);
-    const [activeReviewId, setActiveReviewId] = useState(null);
+    const [courses, setCourses] = useState([]);
+    const [categories, setCategories] = useState([]);
+
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('');
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchData = async () => {
+        const fetchMarketplaceData = async () => {
             try {
-                // Fetch subjects
-                const subRes = await api.get('/subjects');
-                setSubjects(subRes.data);
+                const [coursesRes, catsRes] = await Promise.all([
+                    api.get('/courses'),
+                    api.get('/subjects')
+                ]);
 
-                // Fetch student's bookings
-                if (user?.id) {
-                    const bookRes = await api.get(`/bookings/student/${user.id}`);
-                    setBookings(bookRes.data);
-                }
+                setCourses(Array.isArray(coursesRes.data) ? coursesRes.data : []);
+                setCategories(Array.isArray(catsRes.data) ? catsRes.data : []);
             } catch (error) {
-                console.error('Failed to fetch dashboard data', error);
+                console.error("Failed to load marketplace data", error);
+            } finally {
+                setLoading(false);
             }
         };
-        fetchData();
-    }, [user]);
 
-    const handleLogout = () => {
-        logout();
-        navigate('/');
-    };
+        fetchMarketplaceData();
+    }, []);
 
-    const submitReview = async (bookingId) => {
+    const filteredCourses = courses.filter(course => {
+        const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            course.tutorName.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesCategory = selectedCategory === '' || course.categoryName === selectedCategory;
+
+        return matchesSearch && matchesCategory;
+    });
+
+    // THE ENROLLMENT ENGINE
+    const handleEnroll = async (courseId) => {
+        if (!user || !user.id) {
+            alert("Please log in to enroll in a course.");
+            return;
+        }
+
         try {
-            await api.post(`/reviews/student/${user.id}`, {
-                bookingId: bookingId,
-                rating: rating,
-                comment: reviewText
-            });
-            alert('Review submitted successfully! The tutor\'s ranking has been updated.');
-            setActiveReviewId(null);
-            setReviewText('');
+            await api.post(`/bookings/student/${user.id}/course/${courseId}`);
+            alert("🎉 Successfully enrolled! Your seat is secured.");
         } catch (error) {
-            alert('Failed to submit review. You may have already reviewed this session.');
+            console.error("Enrollment Error:", error);
+            alert(error.response?.data?.message || 'Failed to enroll in course. Check the console for details.');
         }
     };
 
+    if (loading) {
+        return <div className="text-center py-20 text-gray-500 font-medium">Loading Marketplace...</div>;
+    }
+
     return (
-        <div className="max-w-5xl mx-auto space-y-8">
-            {/* Header Section */}
-            <div className="flex justify-between items-center bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Welcome back, {user?.name}! 👋</h1>
-                    <p className="text-gray-500">Ready to learn something new today?</p>
+        <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
+                <div className="max-w-3xl">
+                    <h1 className="text-3xl font-extrabold text-gray-900 mb-2">Discover Courses</h1>
+                    <p className="text-gray-500 mb-8">Browse group sessions, master new skills, and learn from top peer tutors.</p>
+
+                    <div className="flex flex-col md:flex-row gap-4">
+                        <div className="flex-1">
+                            <input
+                                type="text"
+                                placeholder="Search for 'React', 'Calculus', or a Tutor's Name..."
+                                className="w-full p-3.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+                        <div className="w-full md:w-64">
+                            <select
+                                className="w-full p-3.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white"
+                                value={selectedCategory}
+                                onChange={(e) => setSelectedCategory(e.target.value)}
+                            >
+                                <option value="">All Categories</option>
+                                {categories.map(cat => (
+                                    <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
                 </div>
-                <button
-                    onClick={handleLogout}
-                    className="bg-red-50 text-red-600 px-4 py-2 rounded-md font-medium hover:bg-red-100 transition">
-                    Logout
-                </button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Left Column: My Bookings */}
-                <div className="lg:col-span-2 space-y-4">
-                    <h2 className="text-xl font-bold text-gray-800">My Booked Sessions</h2>
-
-                    {bookings.length === 0 ? (
-                        <div className="text-center p-10 bg-white rounded-lg shadow-sm border border-dashed border-gray-300 text-gray-500">
-                            You have no upcoming sessions. Book a tutor to get started!
-                        </div>
-                    ) : (
-                        bookings.map((booking) => (
-                            <div key={booking.id} className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                                <div>
-                                    <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">{booking.subject?.name || 'Subject'}</span>
-                                    <h3 className="text-lg font-bold text-gray-800">Tutor: {booking.tutor?.user?.name || 'Expert'}</h3>
-                                    <p className="text-sm text-gray-600">Date: {booking.sessionDate} | {booking.startTime} - {booking.endTime}</p>
-                                </div>
-
-                                {activeReviewId === booking.id ? (
-                                    <div className="bg-gray-50 p-4 rounded-md border w-full md:w-auto">
-                                        <select value={rating} onChange={(e) => setRating(parseInt(e.target.value))} className="mb-2 w-full p-1 border rounded">
-                                            <option value="5">⭐⭐⭐⭐⭐ (5/5)</option>
-                                            <option value="4">⭐⭐⭐⭐ (4/5)</option>
-                                            <option value="3">⭐⭐⭐ (3/5)</option>
-                                            <option value="2">⭐⭐ (2/5)</option>
-                                            <option value="1">⭐ (1/5)</option>
-                                        </select>
-                                        <textarea
-                                            placeholder="Leave a comment..."
-                                            className="w-full p-2 border rounded text-sm mb-2"
-                                            value={reviewText}
-                                            onChange={(e) => setReviewText(e.target.value)}
-                                        />
-                                        <div className="flex gap-2">
-                                            <button onClick={() => submitReview(booking.id)} className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">Submit</button>
-                                            <button onClick={() => setActiveReviewId(null)} className="bg-gray-300 text-gray-800 px-3 py-1 rounded text-sm">Cancel</button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <button
-                                        onClick={() => setActiveReviewId(booking.id)}
-                                        className="bg-blue-50 text-blue-600 px-4 py-2 rounded-md font-medium hover:bg-blue-100 transition whitespace-nowrap">
-                                        Leave Review
-                                    </button>
-                                )}
-                            </div>
-                        ))
-                    )}
+            <div>
+                <div className="flex justify-between items-end mb-6">
+                    <h2 className="text-xl font-bold text-gray-900">
+                        {filteredCourses.length} {filteredCourses.length === 1 ? 'Course' : 'Courses'} Available
+                    </h2>
                 </div>
 
-                {/* Right Column: Subjects (Kept from earlier) */}
-                <div>
-                    <h2 className="text-xl font-bold text-gray-800 mb-4">Explore Subjects</h2>
-                    <div className="flex flex-col gap-3">
-                        {subjects.map((subject) => (
-                            <div key={subject.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-                                <h3 className="font-bold text-gray-800">{subject.name}</h3>
-                                <span className="text-xs text-gray-500">{subject.category}</span>
+                {filteredCourses.length === 0 ? (
+                    <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-gray-300 text-gray-500">
+                        No courses found matching your search criteria. Try clearing your filters!
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {filteredCourses.map((course) => (
+                            <div key={course.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col hover:shadow-md transition duration-200">
+                                <div className="h-40 bg-gray-100 relative">
+                                    {course.thumbnailUrl ? (
+                                        <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-medium uppercase tracking-wider">No Image</div>
+                                    )}
+                                    <span className="absolute top-2 right-2 bg-blue-600 text-white text-xs px-2.5 py-1 rounded-md font-bold shadow-sm">
+                                        {course.categoryName}
+                                    </span>
+                                </div>
+
+                                <div className="p-5 flex-1 flex flex-col">
+                                    <div className="flex-1">
+                                        <h3 className="text-lg font-bold text-gray-900 mb-1 line-clamp-2 leading-tight">{course.title}</h3>
+                                        <p className="text-sm text-gray-500 mb-3 font-medium">By {course.tutorName}</p>
+
+                                        <div className="bg-gray-50 border border-gray-100 rounded-lg p-2.5 mb-4">
+                                            <p className="text-xs font-semibold text-gray-700 text-center">
+                                                Every {course.scheduleDay} <br/>
+                                                <span className="text-blue-600">{course.scheduleTime} - {course.scheduleEndTime}</span>
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="border-t border-gray-100 pt-4 mt-auto flex items-center justify-between">
+                                        <div className="flex flex-col">
+                                            <span className="text-xs text-gray-500 font-medium">Price per seat</span>
+                                            <span className="text-xl font-extrabold text-gray-900">₹{course.price}</span>
+                                        </div>
+                                        <button
+                                            onClick={() => handleEnroll(course.id)}
+                                            className="bg-gray-900 text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-blue-600 transition shadow-sm">
+                                            Enroll Now
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         ))}
                     </div>
-                </div>
+                )}
             </div>
         </div>
     );

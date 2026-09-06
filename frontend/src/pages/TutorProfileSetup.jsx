@@ -1,131 +1,81 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
 import { AuthContext } from '../context/AuthContext';
+import api from '../services/api';
 
 export default function TutorProfileSetup() {
-    const { user } = useContext(AuthContext);
+    const { user, login } = useContext(AuthContext);
     const navigate = useNavigate();
-    const [subjects, setSubjects] = useState([]);
+
     const [formData, setFormData] = useState({
         experience: '',
-        price: '',
-        teachingLevel: 'Beginner',
         upiId: '',
+        price: 0,
+        teachingLevel: 'Beginner',
         subjectIds: []
     });
-
-    // Fetch master subjects from the database so the tutor can choose
-    useEffect(() => {
-        const fetchSubjects = async () => {
-            try {
-                const response = await api.get('/subjects');
-                setSubjects(response.data);
-            } catch (error) {
-                console.error('Failed to fetch subjects', error);
-            }
-        };
-        fetchSubjects();
-    }, []);
-
-    // Handle checkbox toggles for subjects
-    const handleSubjectChange = (e) => {
-        const subjectId = parseInt(e.target.value);
-        if (e.target.checked) {
-            setFormData({ ...formData, subjectIds: [...formData.subjectIds, subjectId] });
-        } else {
-            setFormData({ ...formData, subjectIds: formData.subjectIds.filter(id => id !== subjectId) });
-        }
-    };
+    const [error, setError] = useState('');
+    const [submitting, setSubmitting] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setError('');
+        setSubmitting(true);
         try {
-            // Send the data to the backend endpoint we created earlier
-            await api.post(`/tutors/profile/${user.id}`, {
-                ...formData,
-                price: parseFloat(formData.price) // Ensure price is a decimal/float
-            });
-            alert('Profile saved successfully!');
+            await api.post(`/tutors/profile/${user.id}`, formData);
+
+            // Immediately sync updated role in local storage
+            const updatedUser = { ...user, role: 'TUTOR' };
+            const currentToken = localStorage.getItem('token');
+            login(updatedUser, currentToken);
+
             navigate('/tutor/dashboard');
-        } catch (error) {
-            alert('Error saving profile. You might have already set it up!');
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to initialize Tutor Studio. Please try again.');
+        } finally {
+            setSubmitting(false);
         }
     };
 
     return (
-        <div className="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-sm border border-gray-100">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Complete Your Tutor Profile</h2>
+        <div className="max-w-xl mx-auto mt-12 bg-white p-8 border border-gray-200 rounded-xl shadow-sm">
+            <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Initialize Tutor Studio</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                    Complete your instructor profile to start creating and managing course batches.
+                </p>
+            </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            {error && <div className="bg-red-50 text-red-600 p-3 rounded-md mb-5 text-sm font-medium">{error}</div>}
+
+            <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Teaching Experience</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Teaching Background & Bio</label>
                     <textarea
+                        required rows="4"
+                        placeholder="Detail your professional experience, qualifications, and domain expertise..."
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
                         value={formData.experience}
-                        onChange={(e) => setFormData({...formData, experience: e.target.value})}
-                        className="w-full p-2 border border-gray-300 rounded-md"
-                        rows="3"
-                        placeholder="Tell students about your background..."
-                        required
+                        onChange={e => setFormData({...formData, experience: e.target.value})}
                     />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Price per Session (₹)</label>
-                        <input
-                            type="number"
-                            value={formData.price}
-                            onChange={(e) => setFormData({...formData, price: e.target.value})}
-                            className="w-full p-2 border border-gray-300 rounded-md"
-                            placeholder="e.g. 500"
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Teaching Level</label>
-                        <select
-                            value={formData.teachingLevel}
-                            onChange={(e) => setFormData({...formData, teachingLevel: e.target.value})}
-                            className="w-full p-2 border border-gray-300 rounded-md bg-white">
-                            <option value="Beginner">Beginner</option>
-                            <option value="Intermediate">Intermediate</option>
-                            <option value="Advanced">Advanced</option>
-                        </select>
-                    </div>
-                </div>
-
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">UPI ID (For Payments)</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">UPI ID for Direct Payouts</label>
                     <input
-                        type="text"
+                        required type="text"
+                        placeholder="e.g. username@okhdfcbank"
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-sm"
                         value={formData.upiId}
-                        onChange={(e) => setFormData({...formData, upiId: e.target.value})}
-                        className="w-full p-2 border border-gray-300 rounded-md"
-                        placeholder="e.g. yourname@okhdfcbank"
-                        required
+                        onChange={e => setFormData({...formData, upiId: e.target.value})}
                     />
                 </div>
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Subjects You Can Teach</label>
-                    <div className="grid grid-cols-2 gap-2 p-4 border border-gray-200 rounded-md bg-gray-50">
-                        {subjects.map(subject => (
-                            <label key={subject.id} className="flex items-center space-x-2">
-                                <input
-                                    type="checkbox"
-                                    value={subject.id}
-                                    onChange={handleSubjectChange}
-                                    className="rounded text-blue-600 focus:ring-blue-500"
-                                />
-                                <span>{subject.name}</span>
-                            </label>
-                        ))}
-                    </div>
-                </div>
-
-                <button type="submit" className="w-full bg-green-600 text-white p-3 rounded-md hover:bg-green-700 transition font-bold">
-                    Save Profile & Start Teaching
+                <button
+                    type="submit"
+                    disabled={submitting}
+                    className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold text-sm hover:bg-blue-700 transition disabled:opacity-50 shadow-sm">
+                    {submitting ? 'Setting up Studio...' : 'Complete Setup & Open Studio'}
                 </button>
             </form>
         </div>

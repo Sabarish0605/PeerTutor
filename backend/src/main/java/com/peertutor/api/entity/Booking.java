@@ -5,56 +5,41 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-
-import java.time.LocalDate;
-import java.time.LocalTime;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "bookings")
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@Entity
+@Table(name = "bookings")
 public class Booking {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // The student who booked the session
+    // The student who is enrolling
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "student_id", nullable = false)
     private User student;
 
-    // The tutor providing the session
+    // The specific course cohort they are joining
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tutor_id", nullable = false)
-    private TutorProfile tutor;
+    @JoinColumn(name = "course_id", nullable = false)
+    private Course course;
 
-    // What they are studying
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "subject_id", nullable = false)
-    private Subject subject;
+    // Track when they purchased/booked the seat
+    @Column(name = "booking_date", nullable = false, updatable = false)
+    private LocalDateTime bookingDate;
 
+    // e.g., "ACTIVE", "CANCELLED", "COMPLETED"
     @Column(nullable = false)
-    private LocalDate sessionDate;
+    @Builder.Default
+    private String status = "ACTIVE";
 
-    @Column(nullable = false)
-    private LocalTime startTime;
-
-    @Column(nullable = false)
-    private LocalTime endTime;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private BookingStatus status;
-
-    // Tutor provides the Google Meet link here
-    private String meetingLink;
-
-    @CreationTimestamp
-    @Column(updatable = false)
-    private LocalDateTime createdAt;
+    @PrePersist
+    protected void onCreate() {
+        bookingDate = LocalDateTime.now();
+    }
 }

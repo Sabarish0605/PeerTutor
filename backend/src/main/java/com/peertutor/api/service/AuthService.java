@@ -4,6 +4,7 @@ import com.peertutor.api.dto.AuthResponse;
 import com.peertutor.api.dto.LoginRequest;
 import com.peertutor.api.dto.RegisterRequest;
 import com.peertutor.api.entity.User;
+import com.peertutor.api.entity.Role; // Added the Role import
 import com.peertutor.api.repository.UserRepository;
 import com.peertutor.api.security.JwtService;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +33,7 @@ public class AuthService {
                 .name(request.getName())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role(request.getRole())
+                .role(Role.STUDENT) // <--- THIS IS THE ONLY CHANGE! We force everyone to be a STUDENT first.
                 .build();
 
         userRepository.save(user);
