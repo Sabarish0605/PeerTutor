@@ -1,47 +1,79 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
-import Navbar from './components/Navbar';
-import Home from './pages/Home';
+import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import StudentDashboard from './pages/StudentDashboard';
 import TutorDashboard from './pages/TutorDashboard';
 import TutorProfileSetup from './pages/TutorProfileSetup';
-import TutorProfile from './pages/TutorProfile';
+import UserProfile from './pages/UserProfile';
 import MyLearning from './pages/MyLearning';
+import ProtectedRoute from './components/ProtectedRoute';
+import { Toaster } from 'react-hot-toast';
+import TutorOnboarding from './pages/TutorOnboarding';
+import DashboardLayout from './components/DashboardLayout';
+import InteractiveBackground from './components/InteractiveBackground';
+import ProfileSettings from './pages/ProfileSettings';
+import Subscriptions from './pages/Subscriptions';
 
 function App() {
   return (
       <AuthProvider>
         <Router>
-          <div className="min-h-screen bg-gray-50 text-gray-900 font-sans flex flex-col">
+          <InteractiveBackground>
+              <Toaster position="bottom-right" />
 
-            {/* Our new smart Navbar */}
-            <Navbar />
-
-            <main className="container mx-auto px-4 py-8 flex-grow">
-              <Routes>
-                <Route path="/" element={<Home />} />
+              <main className="flex-grow w-full">
+                <Routes>
+                <Route path="/" element={<LandingPage />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+                <Route path="/profile/:id" element={<UserProfile />} />
 
-                {/* FIXED: Correct JSX syntax for the element prop */}
-                <Route path="/my-learning" element={<MyLearning />} />
+                <Route element={<DashboardLayout />}>
+                    {/* Protected Routes - Student */}
+                    <Route path="/my-learning" element={
+                        <ProtectedRoute allowedRoles={['STUDENT', 'TUTOR']}>
+                            <MyLearning />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/discover" element={
+                        <ProtectedRoute allowedRoles={['STUDENT', 'TUTOR']}>
+                            <StudentDashboard />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/subscriptions" element={
+                        <ProtectedRoute allowedRoles={['STUDENT', 'TUTOR']}>
+                            <Subscriptions />
+                        </ProtectedRoute>
+                    } />
 
-                {/* Protected Routes */}
-                <Route path="/student/dashboard" element={<StudentDashboard />} />
-                <Route path="/tutor/dashboard" element={<TutorDashboard />} />
-                <Route path="/tutor/setup" element={<TutorProfileSetup />} />
-                <Route path="/tutor/:id" element={<TutorProfile />} />
-
-              </Routes>
-            </main>
-
-            {/* A simple footer for polish */}
-            <footer className="bg-gray-800 text-gray-400 text-center py-6 mt-12 text-sm">
-              <p>© 2026 PeerTutor. Built by students, for students.</p>
-            </footer>
-          </div>
+                    {/* Protected Routes - Tutor */}
+                    <Route path="/tutor/onboarding" element={
+                        <ProtectedRoute allowedRoles={['STUDENT', 'TUTOR']}>
+                            <TutorOnboarding />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/tutor/dashboard" element={
+                        <ProtectedRoute allowedRoles={['TUTOR', 'ADMIN']}>
+                            <TutorDashboard />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/tutor/setup" element={
+                        <ProtectedRoute allowedRoles={['TUTOR', 'ADMIN']}>
+                            <TutorProfileSetup />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="/profile/settings" element={
+                        <ProtectedRoute allowedRoles={['STUDENT', 'TUTOR', 'ADMIN']}>
+                            <ProfileSettings />
+                        </ProtectedRoute>
+                    } />
+                </Route>
+                </Routes>
+              </main>
+          </InteractiveBackground>
         </Router>
       </AuthProvider>
   );

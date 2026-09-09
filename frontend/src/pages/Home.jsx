@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { Star } from 'lucide-react';
 import api from '../services/api';
 
 export default function Home() {
@@ -37,13 +38,13 @@ export default function Home() {
     return (
         <div className="max-w-6xl mx-auto">
             {/* Hero Section */}
-            <div className="bg-blue-600 text-white rounded-2xl p-10 text-center mb-12 shadow-lg">
+            <div className="bg-primary-600 text-white rounded-2xl p-10 text-center mb-12 shadow-lg">
                 <h1 className="text-4xl md:text-5xl font-extrabold mb-4">Find Your Perfect Peer Tutor</h1>
-                <p className="text-lg md:text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
+                <p className="text-lg md:text-xl text-primary-100 mb-8 max-w-2xl mx-auto">
                     Master new subjects with the help of experienced peers. Book a session today and elevate your learning.
                 </p>
                 <Link to="/register">
-                    <button className="bg-white text-blue-600 px-8 py-3 rounded-full font-bold text-lg hover:bg-gray-100 transition shadow-md">
+                    <button className="bg-[#F8F9FA] text-primary-600 px-8 py-3 rounded-full font-bold text-lg hover:bg-gray-100 transition shadow-md">
                         Start Learning Now
                     </button>
                 </Link>
@@ -57,14 +58,14 @@ export default function Home() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {tutors.map((tutor, index) => (
-                        <div key={index} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition flex flex-col h-full">
+                        <div key={index} className="bg-[#F8F9FA] p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition flex flex-col h-full">
                             <div className="flex justify-between items-start mb-4">
                                 <div>
                                     <h3 className="text-xl font-bold text-gray-900">{tutor.user?.name || "Tutor"}</h3>
-                                    <p className="text-sm text-blue-600 font-medium">{tutor.teachingLevel} Level</p>
+                                    <p className="text-sm text-primary-600 font-medium">{tutor.teachingLevel} Level</p>
                                 </div>
-                                <div className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-sm font-bold flex items-center">
-                                    ⭐ {tutor.rating || "New"}
+                                <div className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-sm font-bold flex items-center gap-1">
+                                    <Star className="w-3 h-3 fill-yellow-600 text-yellow-600" /> {tutor.rating || "New"}
                                 </div>
                             </div>
 

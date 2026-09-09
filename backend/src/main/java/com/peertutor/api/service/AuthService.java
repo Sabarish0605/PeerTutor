@@ -12,9 +12,11 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional; // Added @Transactional import
 
 @Service
 @RequiredArgsConstructor
+@Transactional // Added @Transactional to handle lazy loading
 public class AuthService {
 
     private final UserRepository userRepository;

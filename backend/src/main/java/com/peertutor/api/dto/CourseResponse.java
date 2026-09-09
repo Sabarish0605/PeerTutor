@@ -14,8 +14,10 @@ public class CourseResponse {
     private String thumbnailUrl;
     private String demoVideoUrl;
     private String categoryName;
+    private Long tutorId;
     private String tutorName;
-    private String scheduleDay;
-    private String scheduleTime;
-    private String scheduleEndTime;
+    private java.util.List<CourseSlotResponse> slots;
+    private String meetLink;
+    private Long enrollmentCount;
+    private String authorAvatar;
 }

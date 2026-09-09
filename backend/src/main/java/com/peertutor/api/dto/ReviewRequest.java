@@ -8,7 +8,6 @@ import lombok.Data;
 @Data
 public class ReviewRequest {
 
-    @NotNull(message = "Booking ID is required")
     private Long bookingId;
 
     @NotNull(message = "Rating is required")

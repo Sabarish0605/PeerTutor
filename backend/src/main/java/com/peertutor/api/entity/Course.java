@@ -32,16 +32,10 @@ public class Course {
     @Column(nullable = false)
     private Integer maxPeers;
 
-    // The specific day of the week the batch runs
-    @Column(nullable = false)
-    private String scheduleDay;
+    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<CourseSlot> slots;
 
-    // The time the session starts (stored in standard format like "14:30")
-    @Column(nullable = false)
-    private String scheduleTime;
 
-    @Column(nullable = false)
-    private String scheduleEndTime;
 
     // Increased character limit to avoid URL truncation errors
     @Column(length = 2000)
@@ -50,13 +44,15 @@ public class Course {
     @Column(length = 2000)
     private String demoVideoUrl;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tutor_profile_id", nullable = false)
-    private TutorProfile tutor;
+    @Column(name = "meet_link", length = 2000)
+    private String meetLink;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "subject_id", nullable = false)
-    private Subject subject;
+    @JoinColumn(name = "author_id", nullable = false)
+    private User author;
+
+    @Column(name = "category_name", nullable = false)
+    private String categoryName;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

@@ -13,6 +13,9 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     // Counts how many seats are currently taken in a specific course
     long countByCourseId(Long courseId);
 
-    // Checks if a student is already enrolled in a specific course
-    boolean existsByStudentIdAndCourseId(Long studentId, Long courseId);
+    // Checks if a student is already enrolled in a specific slot
+    boolean existsByStudentIdAndCourseIdAndSlotId(Long studentId, Long courseId, Long slotId);
+
+    // Finds all bookings for a specific course
+    List<Booking> findByCourseId(Long courseId);
 }

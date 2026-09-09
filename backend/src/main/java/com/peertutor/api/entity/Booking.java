@@ -1,5 +1,7 @@
 package com.peertutor.api.entity;
 
+// NEW IMPORT
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,21 +21,26 @@ public class Booking {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // The student who is enrolling
+    // THE FIX: Tells JSON to ignore the recursive "bookings" list inside User
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "student_id", nullable = false)
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler", "bookings" })
     private User student;
 
-    // The specific course cohort they are joining
+    // THE FIX: Tells JSON to ignore the recursive "bookings" list inside Course
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "course_id", nullable = false)
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler", "bookings", "slots" })
     private Course course;
 
-    // Track when they purchased/booked the seat
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "slot_id")
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler", "course" })
+    private CourseSlot slot;
+
     @Column(name = "booking_date", nullable = false, updatable = false)
     private LocalDateTime bookingDate;
 
-    // e.g., "ACTIVE", "CANCELLED", "COMPLETED"
     @Column(nullable = false)
     @Builder.Default
     private String status = "ACTIVE";

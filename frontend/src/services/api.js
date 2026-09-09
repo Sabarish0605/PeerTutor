@@ -13,4 +13,18 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
+// Automatically logout the user if the backend says their token is invalid
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            // Hard reload to clear context state and kick them to login
+            window.location.href = '/login';
+        }
+        return Promise.reject(error);
+    }
+);
+
 export default api;

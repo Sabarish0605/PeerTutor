@@ -13,6 +13,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "users")
@@ -40,12 +41,19 @@ public class User implements UserDetails {
     @Column(length = 500)
     private String bio;
 
+    private String fieldOfStudy;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
 
+    @JsonIgnore
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private TutorProfile tutorProfile;
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "author", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Course> courses;
 
     @CreationTimestamp
     @Column(updatable = false)

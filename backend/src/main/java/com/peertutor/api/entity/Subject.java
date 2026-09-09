@@ -26,7 +26,4 @@ public class Subject {
     @Column(nullable = false)
     private String category; // e.g., "Programming", "Mathematics"
 
-    @JsonIgnore // <--- Added to prevent infinite JSON recursion
-    @OneToMany(mappedBy = "subject", cascade = CascadeType.ALL)
-    private List<Course> courses;
 }

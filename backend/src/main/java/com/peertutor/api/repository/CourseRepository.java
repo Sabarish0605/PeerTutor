@@ -9,12 +9,13 @@ import java.util.List;
 @Repository
 public interface CourseRepository extends JpaRepository<Course, Long> {
 
-    // Custom method to easily find all courses taught by a specific tutor
-    List<Course> findByTutorId(Long tutorId);
-
-    // Custom method to filter courses by category (subject) for the Discover page
-    List<Course> findBySubjectId(Long subjectId);
+    // Custom method to easily find all courses taught by a specific author
+    List<Course> findByAuthorId(Long authorId);
 
     // Custom method to search courses by title keyword (for the search bar!)
     List<Course> findByTitleContainingIgnoreCase(String keyword);
+
+    List<Course> findByAuthorIdIn(List<Long> authorIds);
+    
+    long countByAuthorId(Long authorId);
 }

@@ -2,12 +2,17 @@ package com.peertutor.api.service;
 
 import com.peertutor.api.dto.CourseRequest;
 import com.peertutor.api.dto.CourseResponse;
+import com.peertutor.api.dto.CourseSlotRequest;
+import com.peertutor.api.dto.CourseSlotResponse;
 import com.peertutor.api.entity.Course;
-import com.peertutor.api.entity.Subject;
+import com.peertutor.api.entity.CourseSlot;
 import com.peertutor.api.entity.TutorProfile;
+import com.peertutor.api.repository.BookingRepository;
 import com.peertutor.api.repository.CourseRepository;
-import com.peertutor.api.repository.SubjectRepository;
+import com.peertutor.api.repository.SubscriptionRepository;
 import com.peertutor.api.repository.TutorProfileRepository;
+import com.peertutor.api.repository.UserRepository;
+import com.peertutor.api.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -20,37 +25,44 @@ public class CourseService {
 
     private final CourseRepository courseRepository;
     private final TutorProfileRepository tutorProfileRepository;
-    private final SubjectRepository subjectRepository;
+    private final UserRepository userRepository;
+    private final BookingRepository bookingRepository;
+    private final SubscriptionRepository subscriptionRepository;
 
     public CourseResponse createCourse(Long userId, CourseRequest request) {
-        TutorProfile tutor = tutorProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Tutor profile not found. Please complete profile setup first."));
-
-        Subject subject = subjectRepository.findById(request.getSubjectId())
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
         Course course = Course.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .price(request.getPrice())
                 .maxPeers(request.getMaxPeers() != null ? request.getMaxPeers() : 1)
-                .scheduleDay(request.getScheduleDay())
-                .scheduleTime(request.getScheduleTime())
-                .scheduleEndTime(request.getScheduleEndTime())
+                .meetLink(request.getMeetLink())
+                .author(user)
+                .categoryName(request.getCategoryName())
                 .thumbnailUrl(request.getThumbnailUrl())
                 .demoVideoUrl(request.getDemoVideoUrl())
-                .tutor(tutor)
-                .subject(subject)
                 .build();
+
+        if (request.getSlots() != null) {
+            List<CourseSlot> slots = request.getSlots().stream()
+                    .map(slotReq -> CourseSlot.builder()
+                            .course(course)
+                            .slotDateTime(slotReq.getSlotDateTime())
+                            .maxSeats(slotReq.getMaxSeats() != null ? slotReq.getMaxSeats() : 1)
+                            .currentEnrolled(0)
+                            .build())
+                    .collect(Collectors.toList());
+            course.setSlots(slots);
+        }
 
         Course savedCourse = courseRepository.save(course);
         return mapToResponse(savedCourse);
     }
 
-    public List<CourseResponse> getCoursesByTutor(Long userId) {
-        TutorProfile tutor = tutorProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Tutor profile not found"));
-        return courseRepository.findByTutorId(tutor.getId()).stream()
+    public List<CourseResponse> getCoursesByAuthor(Long userId) {
+        return courseRepository.findByAuthorId(userId).stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -62,12 +74,70 @@ public class CourseService {
                 .collect(Collectors.toList());
     }
 
+    public List<CourseResponse> getSubscribedCourses(Long studentId) {
+        List<Long> tutorIds = subscriptionRepository.findByStudentId(studentId).stream()
+                .map(sub -> sub.getTutor().getId())
+                .collect(Collectors.toList());
+
+        return courseRepository.findByAuthorIdIn(tutorIds).stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    public CourseResponse updateCourse(Long courseId, Long userId, CourseRequest request) {
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new RuntimeException("Course not found"));
+
+        if (!course.getAuthor().getId().equals(userId)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, 
+                    "Unauthorized: You do not own this course"
+            );
+        }
+
+        if (bookingRepository.countByCourseId(courseId) > 0) {
+            throw new IllegalStateException("Cannot edit a course that already has enrolled students.");
+        }
+
+        course.setTitle(request.getTitle());
+        course.setDescription(request.getDescription());
+        course.setPrice(request.getPrice());
+        course.setMaxPeers(request.getMaxPeers() != null ? request.getMaxPeers() : 1);
+        course.setThumbnailUrl(request.getThumbnailUrl());
+        course.setDemoVideoUrl(request.getDemoVideoUrl());
+        course.setMeetLink(request.getMeetLink());
+        course.setCategoryName(request.getCategoryName());
+
+        if (request.getSlots() != null) {
+            if (course.getSlots() != null) {
+                course.getSlots().clear();
+            } else {
+                course.setSlots(new java.util.ArrayList<>());
+            }
+            List<CourseSlot> slots = request.getSlots().stream()
+                    .map(slotReq -> CourseSlot.builder()
+                            .course(course)
+                            .slotDateTime(slotReq.getSlotDateTime())
+                            .maxSeats(slotReq.getMaxSeats() != null ? slotReq.getMaxSeats() : 1)
+                            .currentEnrolled(0)
+                            .build())
+                    .collect(Collectors.toList());
+            course.getSlots().addAll(slots);
+        }
+
+        Course updatedCourse = courseRepository.save(course);
+        return mapToResponse(updatedCourse);
+    }
+
     public void deleteCourse(Long courseId, Long userId) {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new RuntimeException("Course not found"));
 
-        if (!course.getTutor().getUser().getId().equals(userId)) {
-            throw new RuntimeException("Unauthorized: You do not own this course");
+        if (!course.getAuthor().getId().equals(userId)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, 
+                    "Unauthorized: You do not own this course"
+            );
         }
 
         courseRepository.delete(course);
@@ -80,13 +150,22 @@ public class CourseService {
                 .description(course.getDescription())
                 .price(course.getPrice())
                 .maxPeers(course.getMaxPeers())
-                .scheduleDay(course.getScheduleDay())
-                .scheduleTime(course.getScheduleTime())
-                .scheduleEndTime(course.getScheduleEndTime())
+                .slots(course.getSlots() != null ? course.getSlots().stream()
+                        .map(slot -> CourseSlotResponse.builder()
+                                .id(slot.getId())
+                                .slotDateTime(slot.getSlotDateTime())
+                                .maxSeats(slot.getMaxSeats())
+                                .currentEnrolled(slot.getCurrentEnrolled())
+                                .build())
+                        .collect(Collectors.toList()) : new java.util.ArrayList<>())
                 .thumbnailUrl(course.getThumbnailUrl())
                 .demoVideoUrl(course.getDemoVideoUrl())
-                .categoryName(course.getSubject().getName())
-                .tutorName(course.getTutor().getUser().getName())
+                .categoryName(course.getCategoryName())
+                .tutorId(course.getAuthor().getId())
+                .tutorName(course.getAuthor().getName())
+                .authorAvatar(course.getAuthor().getProfileImage())
+                .meetLink(course.getMeetLink())
+                .enrollmentCount(bookingRepository.countByCourseId(course.getId()))
                 .build();
     }
 }

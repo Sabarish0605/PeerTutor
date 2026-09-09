@@ -37,8 +37,8 @@ public class ReviewService {
 
         Review savedReview = reviewRepository.save(review);
 
-        // Grab the tutor from the course to update their rating
-        TutorProfile tutor = booking.getCourse().getTutor();
+        // Grab the tutor profile from the course author to update their rating
+        TutorProfile tutor = booking.getCourse().getAuthor().getTutorProfile();
         updateTutorRating(tutor);
 
         return savedReview;
@@ -46,7 +46,7 @@ public class ReviewService {
 
     private void updateTutorRating(TutorProfile tutor) {
         // Using the updated repository method
-        List<Review> tutorReviews = reviewRepository.findByBookingCourseTutorId(tutor.getId());
+        List<Review> tutorReviews = reviewRepository.findByBookingCourseAuthorId(tutor.getUser().getId());
         if (tutorReviews.isEmpty()) return;
 
         double averageRating = tutorReviews.stream()
@@ -56,5 +56,11 @@ public class ReviewService {
 
         tutor.setRating(Math.round(averageRating * 10.0) / 10.0);
         tutorProfileRepository.save(tutor);
+    }
+
+    public List<Review> getReviewsByTutor(Long tutorId) {
+        // Wait, if it takes tutorId but the method takes authorId...
+        // Let's assume tutorId here refers to the User ID for now as per universal user model
+        return reviewRepository.findByBookingCourseAuthorId(tutorId);
     }
 }

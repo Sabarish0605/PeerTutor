@@ -44,11 +44,5 @@ public class TutorProfile {
     @Builder.Default
     private Double reputationScore = 0.0;
 
-    // ==========================================
-    // NEW FOR MARKETPLACE (V3.0)
-    // One Tutor can create multiple custom courses
-    // ==========================================
-    @JsonIgnore // <--- Added to prevent infinite JSON recursion
-    @OneToMany(mappedBy = "tutor", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Course> courses;
+
 }

@@ -1,6 +1,7 @@
 package com.peertutor.api.service;
 
 import com.peertutor.api.dto.TutorProfileRequest;
+import com.peertutor.api.dto.OnboardTutorRequest;
 import com.peertutor.api.entity.Role;
 import com.peertutor.api.entity.TutorProfile;
 import com.peertutor.api.entity.User;
@@ -47,5 +48,34 @@ public class TutorProfileService {
                 .build();
 
         return tutorProfileRepository.save(profile);
+    }
+
+    public User onboardTutor(Long userId, OnboardTutorRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        user.setRole(Role.TUTOR);
+        user.setBio(request.getBio());
+        user = userRepository.save(user);
+
+        var existingProfileOpt = tutorProfileRepository.findByUserId(userId);
+
+        if (existingProfileOpt.isPresent()) {
+            TutorProfile existingProfile = existingProfileOpt.get();
+            existingProfile.setExperience(request.getExperience());
+            existingProfile.setUpiId(request.getUpiId());
+            tutorProfileRepository.save(existingProfile);
+        } else {
+            TutorProfile profile = TutorProfile.builder()
+                    .user(user)
+                    .experience(request.getExperience())
+                    .upiId(request.getUpiId())
+                    .price(0.0)
+                    .teachingLevel("Beginner")
+                    .build();
+            tutorProfileRepository.save(profile);
+        }
+
+        return user;
     }
 }

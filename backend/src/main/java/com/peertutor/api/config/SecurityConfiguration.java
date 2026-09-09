@@ -36,7 +36,7 @@ public class SecurityConfiguration {
                     return corsConfiguration;
                 }))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll() // Public endpoints
+                        .requestMatchers("/api/auth/**", "/uploads/**").permitAll() // Public endpoints
                         .anyRequest().authenticated() // Everything else requires a token
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

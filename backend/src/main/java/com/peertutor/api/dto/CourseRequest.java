@@ -10,8 +10,7 @@ public class CourseRequest {
     private Integer maxPeers;
     private String thumbnailUrl;
     private String demoVideoUrl;
-    private Long subjectId;
-    private String scheduleDay;
-    private String scheduleTime;
-    private String scheduleEndTime;
+    private String categoryName;
+    private java.util.List<CourseSlotRequest> slots;
+    private String meetLink;
 }
