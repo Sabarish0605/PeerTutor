@@ -285,7 +285,7 @@ export default function TutorDashboard() {
                                 <Users size={16} color="#00C2CB" />
                             </div>
                             <span style={{ fontSize: 26, fontWeight: 700, color: '#f1f1f1' }}>{totalSubscribers}</span>
-                            <span style={{ fontSize: 11, color: '#777' }}>Followers on PeerTutor</span>
+                            <span style={{ fontSize: 11, color: '#777' }}>Followers on FLUX</span>
                         </div>
 
                         <div style={{
@@ -657,7 +657,7 @@ export default function TutorDashboard() {
                                 <BookOpen size={40} color="#555" style={{ margin: '0 auto 12px' }} />
                                 <h3 style={{ fontSize: 16, fontWeight: 600, color: '#eee', margin: '0 0 6px' }}>No courses published yet</h3>
                                 <p style={{ fontSize: 13, color: '#888', margin: '0 0 16px', maxWidth: 400, marginLeft: 'auto', marginRight: 'auto' }}>
-                                    Start tutoring on PeerTutor by publishing your first course. Share your knowledge with peers!
+                                    Start tutoring on FLUX by publishing your first course. Share your knowledge with peers!
                                 </p>
                                 <button
                                     onClick={() => setIsCreating(true)}
@@ -854,7 +854,7 @@ export default function TutorDashboard() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, borderBottom: '1px solid #272727', paddingBottom: 16 }}>
                             <div>
                                 <h2 style={{ fontSize: 18, fontWeight: 600, color: '#f1f1f1', margin: 0 }}>Creator Profile</h2>
-                                <p style={{ fontSize: 12, color: '#888', margin: '4px 0 0' }}>Your identity across PeerTutor. Students see this information on your course cards and profile.</p>
+                                <p style={{ fontSize: 12, color: '#888', margin: '4px 0 0' }}>Your identity across FLUX. Students see this information on your course cards and profile.</p>
                             </div>
                             <button
                                 onClick={() => setIsEditingProfile(!isEditingProfile)}

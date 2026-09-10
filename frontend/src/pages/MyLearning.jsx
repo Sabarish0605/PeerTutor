@@ -1,13 +1,171 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { toast } from 'react-hot-toast';
+import { 
+    BookOpen, Clock, Video, PlayCircle, Star, 
+    X, ArrowRight, Award, ChevronLeft, ChevronRight 
+} from 'lucide-react';
+
+const T = {
+    bg:        '#0f0f0f',
+    card:      '#212121',
+    hover:     '#272727',
+    border:    '#3f3f3f',
+    text:      '#f1f1f1',
+    muted:     '#aaaaaa',
+    accent:    '#00C2CB',
+};
+
+/* ── YouTube-Style Category Filter Chips (Identical to Home page) ── */
+function LearningCategoryBar({ categories, selected, onSelect }) {
+    const scrollRef = useRef(null);
+    const [canScrollLeft, setCanScrollLeft] = useState(false);
+    const [canScrollRight, setCanScrollRight] = useState(false);
+
+    const checkScrollButtons = () => {
+        if (scrollRef.current) {
+            const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+            setCanScrollLeft(scrollLeft > 10);
+            setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+        }
+    };
+
+    useEffect(() => {
+        checkScrollButtons();
+        window.addEventListener('resize', checkScrollButtons);
+        return () => window.removeEventListener('resize', checkScrollButtons);
+    }, [categories]);
+
+    const scroll = (dir) => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollBy({ left: dir * 240, behavior: 'smooth' });
+            setTimeout(checkScrollButtons, 350);
+        }
+    };
+
+    return (
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginBottom: 24 }}>
+            {/* Left scroll arrow */}
+            {canScrollLeft && (
+                <div style={{
+                    position: 'absolute', left: 0, top: 0, bottom: 0, zIndex: 10,
+                    display: 'flex', alignItems: 'center',
+                    background: 'linear-gradient(90deg, #0f0f0f 70%, transparent 100%)',
+                    paddingRight: 16,
+                }}>
+                    <button
+                        onClick={() => scroll(-1)}
+                        style={{
+                            width: 34, height: 34,
+                            borderRadius: '50%',
+                            border: '1px solid #3f3f3f',
+                            background: '#212121',
+                            color: '#f1f1f1',
+                            cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            transition: 'background 0.15s',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#383838'}
+                        onMouseLeave={e => e.currentTarget.style.background = '#212121'}
+                        title="Scroll left"
+                    >
+                        <ChevronLeft size={18} />
+                    </button>
+                </div>
+            )}
+
+            {/* Chips strip */}
+            <div
+                ref={scrollRef}
+                onScroll={checkScrollButtons}
+                style={{
+                    display: 'flex',
+                    gap: 10,
+                    overflowX: 'auto',
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none',
+                    paddingBottom: 2,
+                    flex: 1,
+                    scrollBehavior: 'smooth',
+                    paddingLeft: canScrollLeft ? 44 : 0,
+                    paddingRight: canScrollRight ? 44 : 0,
+                    transition: 'padding 0.2s ease',
+                }}
+            >
+                {categories.map(cat => {
+                    const active = cat === selected;
+                    return (
+                        <button
+                            key={cat}
+                            onClick={() => onSelect(cat)}
+                            style={{
+                                flexShrink: 0,
+                                padding: '7px 15px',
+                                borderRadius: 8,
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: 13,
+                                fontWeight: active ? 600 : 500,
+                                fontFamily: 'Roboto, Inter, sans-serif',
+                                whiteSpace: 'nowrap',
+                                transition: 'background 0.15s, color 0.15s',
+                                background: active ? '#f1f1f1' : '#272727',
+                                color:      active ? '#0f0f0f'  : '#f1f1f1',
+                            }}
+                            onMouseEnter={e => {
+                                if (!active) e.currentTarget.style.background = '#383838';
+                            }}
+                            onMouseLeave={e => {
+                                if (!active) e.currentTarget.style.background = '#272727';
+                            }}
+                        >
+                            {cat}
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* Right scroll arrow */}
+            {canScrollRight && (
+                <div style={{
+                    position: 'absolute', right: 0, top: 0, bottom: 0, zIndex: 10,
+                    display: 'flex', alignItems: 'center',
+                    background: 'linear-gradient(270deg, #0f0f0f 70%, transparent 100%)',
+                    paddingLeft: 16,
+                }}>
+                    <button
+                        onClick={() => scroll(1)}
+                        style={{
+                            width: 34, height: 34,
+                            borderRadius: '50%',
+                            border: '1px solid #3f3f3f',
+                            background: '#212121',
+                            color: '#f1f1f1',
+                            cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            transition: 'background 0.15s',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#383838'}
+                        onMouseLeave={e => e.currentTarget.style.background = '#212121'}
+                        title="Scroll right"
+                    >
+                        <ChevronRight size={18} />
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
 
 export default function MyLearning() {
     const { user } = useContext(AuthContext);
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [selectedCategory, setSelectedCategory] = useState('All');
 
     const [reviewModalOpen, setReviewModalOpen] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState(null);
@@ -37,7 +195,7 @@ export default function MyLearning() {
         setSubmittingReview(true);
         try {
             await api.post(`/reviews/student/${user.id}/booking/${selectedBooking.id}`, reviewForm);
-            toast.success("Feedback submitted successfully. Thank you.");
+            toast.success("Feedback submitted successfully. Thank you!");
             setReviewModalOpen(false);
             setReviewForm({ rating: 5, comment: '' });
         } catch (error) {
@@ -48,179 +206,479 @@ export default function MyLearning() {
         }
     };
 
+    // Filter categories dynamically
+    const categories = ['All', 'Upcoming Sessions', 'Active Courses'];
+    const courseCategories = Array.from(new Set(bookings.map(b => b.course?.categoryName).filter(Boolean)));
+    courseCategories.forEach(c => {
+        if (!categories.includes(c)) categories.push(c);
+    });
+
+    const filteredBookings = bookings.filter(b => {
+        if (selectedCategory === 'All') return true;
+        if (selectedCategory === 'Upcoming Sessions') {
+            if (!b.slot?.slotDateTime) return false;
+            return new Date(b.slot.slotDateTime) >= new Date();
+        }
+        if (selectedCategory === 'Active Courses') {
+            return (b.status || 'ACTIVE').toUpperCase() === 'ACTIVE';
+        }
+        return b.course?.categoryName === selectedCategory;
+    });
+
     if (loading) {
-        return <div className="text-center py-20 text-gray-500 font-sans text-sm animate-pulse">Loading your courses...</div>;
+        return (
+            <div style={{
+                background: '#0f0f0f', minHeight: '100vh',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#aaaaaa', fontSize: 14, fontFamily: 'Roboto, Inter, sans-serif',
+            }}>
+                Loading your enrolled courses...
+            </div>
+        );
     }
 
     return (
-        <div className="flex flex-col w-full max-w-6xl mx-auto pt-8 px-4 pb-16 font-sans">
-            <div className="mb-8">
-                <h1 className="text-3xl md:text-4xl text-gray-900 font-bold tracking-tight mb-3">My Learning</h1>
-                <p className="text-sm md:text-base text-gray-600">Review your enrolled courses and upcoming sessions.</p>
-            </div>
+        <div style={{
+            background: '#0f0f0f',
+            minHeight: '100vh',
+            color: '#f1f1f1',
+            fontFamily: 'Roboto, Inter, sans-serif',
+            padding: '16px 24px 80px',
+        }}>
+            {/* Category Chips Filter Bar (Exact Same Structure as Home Page) */}
+            {bookings.length > 0 && (
+                <LearningCategoryBar
+                    categories={categories}
+                    selected={selectedCategory}
+                    onSelect={setSelectedCategory}
+                />
+            )}
 
-            <div className="flex justify-between items-end mb-6">
-                <h2 className="text-xl text-gray-900 font-bold">
-                    <span className="text-blue-600">{bookings.length}</span> Active Enrollments
-                </h2>
-            </div>
-
+            {/* Empty State */}
             {bookings.length === 0 ? (
-                <div className="text-center py-24 bg-white rounded-xl border border-dashed border-gray-300 text-gray-500 text-sm">
-                    You haven't enrolled in any courses yet. Check out the Discover section!
+                <div style={{
+                    textAlign: 'center',
+                    padding: '80px 24px',
+                    background: '#161616',
+                    borderRadius: 24,
+                    border: '1px solid #272727',
+                    maxWidth: 540,
+                    margin: '40px auto 0',
+                    boxShadow: '0 12px 36px rgba(0,0,0,0.5)',
+                }}>
+                    <div style={{
+                        width: 68,
+                        height: 68,
+                        borderRadius: '50%',
+                        background: 'rgba(0,194,203,0.1)',
+                        border: '1px solid rgba(0,194,203,0.2)',
+                        color: '#00C2CB',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 20px',
+                    }}>
+                        <BookOpen size={30} />
+                    </div>
+
+                    <h2 style={{ fontSize: 20, fontWeight: 700, color: '#f1f1f1', margin: '0 0 8px' }}>
+                        No Enrolled Courses Yet
+                    </h2>
+                    <p style={{
+                        fontSize: 13,
+                        color: '#aaaaaa',
+                        maxWidth: 380,
+                        margin: '0 auto 24px',
+                        lineHeight: 1.6,
+                    }}>
+                        Explore the marketplace, discover skilled peer tutors, and book your first interactive learning session!
+                    </p>
+
+                    <Link
+                        to="/discover"
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            background: '#00C2CB',
+                            color: '#0f0f0f',
+                            borderRadius: 20,
+                            padding: '10px 24px',
+                            fontSize: 13,
+                            fontWeight: 700,
+                            textDecoration: 'none',
+                            transition: 'opacity 0.15s',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+                        onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                    >
+                        <span>Explore Discover</span>
+                        <ArrowRight size={14} />
+                    </Link>
+                </div>
+            ) : filteredBookings.length === 0 ? (
+                <div style={{
+                    textAlign: 'center', padding: '60px 0',
+                    color: '#aaaaaa', fontSize: 14,
+                }}>
+                    No enrolled courses match the selected category.
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-                    {bookings.map((booking, idx) => {
-                        const bgColors = ['bg-indigo-50', 'bg-blue-50', 'bg-purple-50', 'bg-pink-50'];
-                        const cardBg = bgColors[idx % bgColors.length];
-                        
-                        return (
-                        <div key={booking.id} className={`${cardBg} rounded-[32px] p-3 transition-all hover:-translate-y-1 hover:shadow-md group flex flex-col`}>
-                            <div className="bg-white rounded-2xl p-4 shadow-sm flex flex-col h-full border border-slate-100">
-                                {/* Image */}
-                                <div className="relative w-full aspect-video bg-slate-100 rounded-xl overflow-hidden mb-4">
-                                    {booking.course?.thumbnailUrl ? (
-                                        <img src={booking.course.thumbnailUrl} alt={booking.course?.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs font-medium tracking-wider uppercase bg-slate-50">No Preview</div>
-                                    )}
-                                    <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-white/95 border border-slate-200 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-sm">
-                                        <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                                        <span className="text-[11px] text-slate-700 font-semibold uppercase">{booking.status}</span>
-                                    </div>
-                                </div>
-
-                                {/* Content */}
-                                <div className="flex flex-col flex-grow">
-                                    <h3 className="text-lg text-slate-800 font-bold mb-2 group-hover:text-primary transition-colors line-clamp-2 leading-tight">
-                                        {booking.course?.title}
-                                    </h3>
-                                    <p className="text-[11px] text-slate-500 uppercase font-semibold mb-2">
-                                        Enrolled: {new Date(booking.bookingDate).toLocaleDateString()}
-                                    </p>
-
-                                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 mt-auto mb-4">
-                                        <p className="text-[11px] text-slate-500 mb-1 font-semibold uppercase tracking-wider">Scheduled Session:</p>
-                                        <p className="text-sm text-secondary font-bold">
-                                            {booking.slot ? new Date(booking.slot.slotDateTime).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'Not Scheduled'}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {/* Footer Row 1: Author */}
-                                <div className="flex items-center justify-between mb-3">
-                                    <Link to={`/profile/${booking.course?.tutorId}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                                        <img src={booking.course?.authorAvatar || `https://ui-avatars.com/api/?name=${booking.course?.tutorName || 'Unknown'}&background=EBF5FF&color=00C2CB`} className="w-8 h-8 rounded-full object-cover ring-2 ring-slate-50" />
-                                        <span className="text-sm text-slate-700 font-semibold">{booking.course?.tutorName}</span>
-                                    </Link>
-                                </div>
-
-                                {/* Footer Row 2: Actions */}
-                                <div className="flex flex-col gap-2 border-t border-slate-100 pt-3 mt-auto">
-                                    <div className="flex gap-2">
-                                        {booking.course?.meetLink ? (
-                                            <button onClick={() => window.open(booking.course.meetLink, '_blank')} className="flex-1 inline-flex justify-center items-center gap-1.5 text-sm text-white font-semibold bg-secondary hover:bg-secondary-hover py-2.5 rounded-xl shadow-sm transition-all">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect width="15" height="14" x="1" y="5" rx="2" ry="2"/></svg>
-                                                Join Class
-                                            </button>
-                                        ) : (
-                                            <button disabled className="flex-1 inline-flex justify-center items-center gap-1.5 text-sm text-slate-400 bg-slate-50 border border-slate-200 py-2.5 rounded-xl cursor-not-allowed font-medium">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/></svg>
-                                                Pending Link
-                                            </button>
-                                        )}
-                                        {booking.course?.demoVideoUrl && (
-                                            <button onClick={() => window.open(booking.course.demoVideoUrl, '_blank')} className="flex-1 inline-flex justify-center items-center gap-1.5 text-sm text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 py-2.5 rounded-xl transition-all font-medium shadow-sm">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
-                                                Replay
-                                            </button>
-                                        )}
-                                    </div>
-                                    <button onClick={() => { setSelectedBooking(booking); setReviewModalOpen(true); }} className="w-full inline-flex justify-center items-center gap-1.5 text-sm text-slate-600 hover:text-primary bg-transparent hover:bg-slate-50 border border-slate-200 py-2.5 rounded-xl transition-all font-medium">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                                        Leave a Review
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )})}
+                /* ── Enrolled Courses Grid (Exact Same Architecture as Home / Discover Page) ── */
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))',
+                    gap: '20px 16px',
+                }}>
+                    {filteredBookings.map(booking => (
+                        <LearningCourseItem
+                            key={booking.id}
+                            booking={booking}
+                            onOpenReview={() => {
+                                setSelectedBooking(booking);
+                                setReviewModalOpen(true);
+                            }}
+                        />
+                    ))}
                 </div>
             )}
 
-            {/* Review Modal */}
+            {/* ── Review Feedback Modal (YouTube Dark Theme) ── */}
             {reviewModalOpen && selectedBooking && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
-                    <div className="bg-white border border-gray-200 rounded-xl w-full max-w-md shadow-xl relative">
-                        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-xl">
-                            <div className="flex items-center gap-2">
-                                <span className="material-symbols-outlined text-blue-600">rate_review</span>
-                                <h2 className="text-sm text-gray-900 font-bold uppercase tracking-wider">Course Feedback</h2>
+                <div style={{
+                    position: 'fixed', inset: 0, zIndex: 100,
+                    background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+                }}>
+                    <div style={{
+                        background: '#1c1c1c', border: '1px solid #383838', borderRadius: 20,
+                        width: '100%', maxWidth: 440, overflow: 'hidden',
+                        boxShadow: '0 24px 60px rgba(0,0,0,0.85)',
+                    }}>
+                        {/* Modal Header */}
+                        <div style={{
+                            padding: '16px 20px', background: '#151515',
+                            borderBottom: '1px solid #2a2a2a',
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Award size={18} color="#00C2CB" />
+                                <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#f1f1f1', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    Course Feedback
+                                </h3>
                             </div>
-                            <button onClick={() => setReviewModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-all flex items-center justify-center">
-                                <span className="material-symbols-outlined text-[20px]">close</span>
+                            <button
+                                onClick={() => setReviewModalOpen(false)}
+                                style={{
+                                    background: 'transparent', border: 'none', color: '#aaaaaa',
+                                    cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center',
+                                }}
+                            >
+                                <X size={18} />
                             </button>
                         </div>
-                        
-                        <div className="p-6">
-                            <p className="text-sm text-gray-600 mb-6">
-                                How was your experience with:<br/>
-                                <span className="text-gray-900 font-bold">{selectedBooking.course?.title}</span>
+
+                        {/* Modal Content */}
+                        <form onSubmit={handleSubmitReview} style={{ padding: 20 }}>
+                            <p style={{ fontSize: 13, color: '#aaaaaa', margin: '0 0 16px' }}>
+                                How was your learning experience with:<br />
+                                <span style={{ color: '#f1f1f1', fontWeight: 600 }}>{selectedBooking.course?.title}</span>
                             </p>
-                            
-                            <form onSubmit={handleSubmitReview} className="space-y-6">
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                                        Rating
-                                    </label>
-                                    <div className="flex gap-2">
-                                        {[1, 2, 3, 4, 5].map((star) => (
-                                            <svg
-                                                key={star}
-                                                onClick={() => setReviewForm({ ...reviewForm, rating: star })}
-                                                onMouseEnter={() => setHoverRating(star)}
-                                                onMouseLeave={() => setHoverRating(0)}
-                                                className={`w-8 h-8 cursor-pointer transition-colors ${
-                                                    star <= (hoverRating || reviewForm.rating)
-                                                        ? 'text-yellow-400'
-                                                        : 'text-gray-300'
-                                                }`}
-                                                fill="currentColor"
-                                                viewBox="0 0 20 20"
-                                            >
-                                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                            </svg>
-                                        ))}
-                                    </div>
+
+                            {/* Rating Stars */}
+                            <div style={{ marginBottom: 18 }}>
+                                <label style={{ display: 'block', fontSize: 11, color: '#888', fontWeight: 600, textTransform: 'uppercase', marginBottom: 8 }}>
+                                    Your Rating
+                                </label>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    {[1, 2, 3, 4, 5].map(star => (
+                                        <button
+                                            type="button"
+                                            key={star}
+                                            onClick={() => setReviewForm({ ...reviewForm, rating: star })}
+                                            onMouseEnter={() => setHoverRating(star)}
+                                            onMouseLeave={() => setHoverRating(0)}
+                                            style={{
+                                                background: 'transparent', border: 'none', cursor: 'pointer', padding: 2,
+                                                transform: (hoverRating || reviewForm.rating) >= star ? 'scale(1.15)' : 'scale(1)',
+                                                transition: 'transform 0.1s ease',
+                                            }}
+                                        >
+                                            <Star
+                                                size={28}
+                                                color={star <= (hoverRating || reviewForm.rating) ? '#facc15' : '#444444'}
+                                                fill={star <= (hoverRating || reviewForm.rating) ? '#facc15' : 'none'}
+                                            />
+                                        </button>
+                                    ))}
                                 </div>
-                                
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                                        Review Comment
-                                    </label>
-                                    <textarea 
-                                        rows="4" 
-                                        className="w-full bg-white text-gray-900 placeholder:text-gray-400 text-sm rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                                        placeholder="Share your thoughts..."
-                                        value={reviewForm.comment}
-                                        onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                                
-                                <div className="flex gap-3 pt-2">
-                                    <button type="button" onClick={() => setReviewModalOpen(false)} className="flex-1 py-3 px-4 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 text-sm font-semibold rounded-lg transition-all">
-                                        Cancel
-                                    </button>
-                                    <button type="submit" disabled={submittingReview} className="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50 transition-all shadow-sm">
-                                        {submittingReview ? 'Submitting...' : 'Submit Review'}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
+                            </div>
+
+                            {/* Comment */}
+                            <div style={{ marginBottom: 20 }}>
+                                <label style={{ display: 'block', fontSize: 11, color: '#888', fontWeight: 600, textTransform: 'uppercase', marginBottom: 6 }}>
+                                    Review Comment
+                                </label>
+                                <textarea
+                                    rows="4"
+                                    required
+                                    placeholder="Share your thoughts about the instructor, pacing, and learning material..."
+                                    value={reviewForm.comment}
+                                    onChange={e => setReviewForm({ ...reviewForm, comment: e.target.value })}
+                                    style={{
+                                        width: '100%', background: '#121212', border: '1px solid #333333',
+                                        borderRadius: 10, padding: '10px 12px', color: '#f1f1f1', fontSize: 13,
+                                        outline: 'none', boxSizing: 'border-box', fontFamily: 'Roboto, Inter, sans-serif',
+                                    }}
+                                    onFocus={e => e.target.style.borderColor = '#00C2CB'}
+                                    onBlur={e => e.target.style.borderColor = '#333333'}
+                                />
+                            </div>
+
+                            {/* Buttons */}
+                            <div style={{ display: 'flex', gap: 10 }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setReviewModalOpen(false)}
+                                    style={{
+                                        flex: 1, padding: '10px 0', borderRadius: 10,
+                                        background: '#242424', border: '1px solid #383838',
+                                        color: '#aaa', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={submittingReview}
+                                    style={{
+                                        flex: 1, padding: '10px 0', borderRadius: 10,
+                                        background: '#00C2CB', border: 'none',
+                                        color: '#0f0f0f', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                                        opacity: submittingReview ? 0.5 : 1,
+                                    }}
+                                >
+                                    {submittingReview ? 'Submitting...' : 'Submit Feedback'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
+        </div>
+    );
+}
+
+/* ── YouTube-Style Enrolled Course Item (Same Architecture as Home Page CourseCard) ── */
+function LearningCourseItem({ booking, onOpenReview }) {
+    const [hovered, setHovered] = useState(false);
+    const course = booking.course;
+    const dateObj = booking.slot?.slotDateTime ? new Date(booking.slot.slotDateTime) : null;
+
+    return (
+        <div
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            style={{
+                display: 'flex',
+                flexDirection: 'column',
+                borderRadius: 16,
+                padding: '10px',
+                background: hovered ? '#212121' : 'transparent',
+                border: hovered ? '1px solid #333333' : '1px solid transparent',
+                transition: 'background 0.2s ease, border-color 0.2s ease, transform 0.2s ease',
+                transform: hovered ? 'translateY(-2px)' : 'none',
+            }}
+        >
+            {/* 16:9 Thumbnail Block (Identical to Home page) */}
+            <div style={{
+                position: 'relative',
+                width: '100%',
+                paddingTop: '56.25%',
+                borderRadius: 12,
+                overflow: 'hidden',
+                background: '#1c1c1c',
+                marginBottom: 12,
+                flexShrink: 0,
+            }}>
+                {course?.thumbnailUrl ? (
+                    <img
+                        src={course.thumbnailUrl}
+                        alt={course.title}
+                        style={{
+                            position: 'absolute', inset: 0,
+                            width: '100%', height: '100%',
+                            objectFit: 'cover', display: 'block',
+                            transform: hovered ? 'scale(1.03)' : 'scale(1)',
+                            transition: 'transform 0.4s ease',
+                        }}
+                    />
+                ) : (
+                    <div style={{
+                        position: 'absolute', inset: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: '#666', fontSize: 11, fontWeight: 600,
+                        letterSpacing: '0.08em', textTransform: 'uppercase',
+                    }}>
+                        No Preview
+                    </div>
+                )}
+
+                {/* Status badge (top-right) */}
+                <div style={{
+                    position: 'absolute', top: 8, right: 8,
+                    background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)',
+                    border: '1px solid rgba(74,222,128,0.3)',
+                    borderRadius: 20, padding: '2px 8px',
+                    display: 'flex', alignItems: 'center', gap: 5,
+                }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ade80' }} />
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#4ade80', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {booking.status || 'Active'}
+                    </span>
+                </div>
+
+                {/* Category badge (bottom-left) */}
+                {course?.categoryName && (
+                    <span style={{
+                        position: 'absolute', bottom: 8, left: 8,
+                        background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)',
+                        color: '#f1f1f1', fontSize: 11, fontWeight: 600,
+                        padding: '3px 8px', borderRadius: 4,
+                    }}>
+                        {course.categoryName}
+                    </span>
+                )}
+
+                {/* Demo video play button (bottom-right) */}
+                {course?.demoVideoUrl && (
+                    <button
+                        onClick={e => { e.stopPropagation(); window.open(course.demoVideoUrl, '_blank'); }}
+                        style={{
+                            position: 'absolute', bottom: 8, right: 8,
+                            background: 'rgba(0,0,0,0.75)', border: 'none',
+                            borderRadius: '50%', width: 32, height: 32,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: 'pointer', color: '#f1f1f1',
+                            transition: 'transform 0.15s ease',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+                        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                        title="Watch Demo / Replay"
+                    >
+                        <PlayCircle size={18} />
+                    </button>
+                )}
+            </div>
+
+            {/* Info Row: Avatar + Title + Tutor + Session Time (Exact same as Home page) */}
+            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <Link to={`/profile/${course?.tutorId}`} onClick={e => e.stopPropagation()}>
+                    <img
+                        src={course?.authorAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(course?.tutorName || 'T')}&background=1a2a2a&color=00C2CB`}
+                        alt={course?.tutorName}
+                        style={{
+                            width: 36, height: 36, borderRadius: '50%',
+                            objectFit: 'cover', flexShrink: 0,
+                            border: '1.5px solid #3f3f3f',
+                        }}
+                    />
+                </Link>
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    {/* Course Title */}
+                    <h3 style={{
+                        margin: '0 0 4px', fontSize: 14, fontWeight: 600,
+                        color: hovered ? '#00C2CB' : '#f1f1f1',
+                        lineHeight: 1.4,
+                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        transition: 'color 0.15s',
+                    }}>
+                        {course?.title || 'Enrolled Course'}
+                    </h3>
+
+                    {/* Tutor Name */}
+                    <p style={{ margin: '0 0 4px', fontSize: 12, color: '#aaaaaa' }}>
+                        {course?.tutorName}
+                    </p>
+
+                    {/* Scheduled session time */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <Clock size={11} color="#00C2CB" />
+                            <span style={{ fontSize: 12, color: '#00C2CB', fontWeight: 500 }}>
+                                {dateObj ? dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Session scheduled'}
+                            </span>
+                        </div>
+                        <span style={{ fontSize: 12, color: '#888' }}>
+                            {course?.price === 0 ? 'Free' : course?.price ? `₹${course.price}` : 'Enrolled'}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Action Row: Join Class + Feedback (Styled identically to Home page button) */}
+            <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+                {course?.meetLink ? (
+                    <button
+                        onClick={() => window.open(course.meetLink, '_blank')}
+                        style={{
+                            flex: 1,
+                            padding: '8px 0',
+                            borderRadius: 8,
+                            border: 'none',
+                            cursor: 'pointer',
+                            background: hovered ? '#00C2CB' : '#272727',
+                            color: hovered ? '#0f0f0f' : '#f1f1f1',
+                            fontSize: 13, fontWeight: 600,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                            transition: 'background 0.15s ease, color 0.15s ease',
+                        }}
+                    >
+                        <Video size={14} />
+                        <span>Join Class</span>
+                    </button>
+                ) : (
+                    <button
+                        disabled
+                        style={{
+                            flex: 1,
+                            padding: '8px 0',
+                            borderRadius: 8,
+                            border: 'none',
+                            cursor: 'not-allowed',
+                            background: '#181818',
+                            color: '#666',
+                            fontSize: 13, fontWeight: 600,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        }}
+                    >
+                        <span>Link Pending</span>
+                    </button>
+                )}
+
+                <button
+                    onClick={onOpenReview}
+                    title="Leave Feedback & Rating"
+                    style={{
+                        padding: '8px 14px',
+                        borderRadius: 8,
+                        background: '#272727',
+                        border: '1px solid #333333',
+                        color: '#facc15',
+                        cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        fontSize: 12, fontWeight: 600,
+                        transition: 'background 0.15s ease',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#383838'}
+                    onMouseLeave={e => e.currentTarget.style.background = '#272727'}
+                >
+                    <Star size={14} fill="#facc15" />
+                    <span>Review</span>
+                </button>
+            </div>
         </div>
     );
 }

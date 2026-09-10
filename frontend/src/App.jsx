@@ -27,9 +27,10 @@ function App() {
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
-                <Route path="/profile/:id" element={<UserProfile />} />
 
                 <Route element={<DashboardLayout />}>
+                    <Route path="/profile/:id" element={<UserProfile />} />
+
                     {/* Protected Routes - Student */}
                     <Route path="/my-learning" element={
                         <ProtectedRoute allowedRoles={['STUDENT', 'TUTOR']}>
