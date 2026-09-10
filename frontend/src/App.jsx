@@ -53,8 +53,14 @@ function App() {
                             <TutorOnboarding />
                         </ProtectedRoute>
                     } />
+                    {/* Studio (Profile, Subscribers, and Courses Hub) */}
+                    <Route path="/studio" element={
+                        <ProtectedRoute allowedRoles={['STUDENT', 'TUTOR', 'ADMIN']}>
+                            <TutorDashboard />
+                        </ProtectedRoute>
+                    } />
                     <Route path="/tutor/dashboard" element={
-                        <ProtectedRoute allowedRoles={['TUTOR', 'ADMIN']}>
+                        <ProtectedRoute allowedRoles={['STUDENT', 'TUTOR', 'ADMIN']}>
                             <TutorDashboard />
                         </ProtectedRoute>
                     } />

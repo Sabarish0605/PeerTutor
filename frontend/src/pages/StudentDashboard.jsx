@@ -1,54 +1,198 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api from '../services/api';
 import { toast } from 'react-hot-toast';
 import EnrollmentModal from '../components/EnrollmentModal';
-import { Search, Filter, ChevronDown, PlayCircle, PlusCircle } from 'lucide-react';
+import { PlayCircle, PlusCircle, Clock, ChevronRight, ChevronLeft } from 'lucide-react';
+
+const T = {
+    bg:        '#0f0f0f',
+    card:      '#212121',
+    hover:     '#272727',
+    border:    '#3f3f3f',
+    text:      '#f1f1f1',
+    muted:     '#aaaaaa',
+    accent:    '#00C2CB',
+};
+
+const CS_CATEGORIES = [
+    "Software Development", "Databases", "Cloud & DevOps",
+    "Cybersecurity", "Networking", "AI & Machine Learning",
+    "Data Science", "Hardware & Systems",
+];
+
+/* ── Scrollable YouTube-style category chip bar (Bidirectional) ── */
+function CategoryBar({ selected, onSelect }) {
+    const scrollRef = useRef(null);
+    const [canScrollLeft, setCanScrollLeft] = useState(false);
+    const [canScrollRight, setCanScrollRight] = useState(true);
+    const categories = ["All", ...CS_CATEGORIES];
+
+    const checkScrollButtons = () => {
+        if (scrollRef.current) {
+            const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+            setCanScrollLeft(scrollLeft > 10);
+            setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+        }
+    };
+
+    useEffect(() => {
+        checkScrollButtons();
+        window.addEventListener('resize', checkScrollButtons);
+        return () => window.removeEventListener('resize', checkScrollButtons);
+    }, []);
+
+    const scroll = (dir) => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollBy({ left: dir * 260, behavior: 'smooth' });
+            setTimeout(checkScrollButtons, 350);
+        }
+    };
+
+    return (
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginBottom: 24 }}>
+            {/* Left scroll arrow */}
+            {canScrollLeft && (
+                <div style={{
+                    position: 'absolute', left: 0, top: 0, bottom: 0, zIndex: 10,
+                    display: 'flex', alignItems: 'center',
+                    background: 'linear-gradient(90deg, #0f0f0f 70%, transparent 100%)',
+                    paddingRight: 16,
+                }}>
+                    <button
+                        onClick={() => scroll(-1)}
+                        style={{
+                            width: 34, height: 34,
+                            borderRadius: '50%',
+                            border: '1px solid #3f3f3f',
+                            background: '#212121',
+                            color: '#f1f1f1',
+                            cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            transition: 'background 0.15s, transform 0.1s',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#383838'}
+                        onMouseLeave={e => e.currentTarget.style.background = '#212121'}
+                        title="Previous categories"
+                    >
+                        <ChevronLeft size={18} />
+                    </button>
+                </div>
+            )}
+
+            {/* Chips strip */}
+            <div
+                ref={scrollRef}
+                onScroll={checkScrollButtons}
+                style={{
+                    display: 'flex',
+                    gap: 10,
+                    overflowX: 'auto',
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none',
+                    paddingBottom: 2,
+                    flex: 1,
+                    scrollBehavior: 'smooth',
+                    paddingLeft: canScrollLeft ? 44 : 0,
+                    paddingRight: canScrollRight ? 44 : 0,
+                    transition: 'padding 0.2s ease',
+                }}
+            >
+                {categories.map(cat => {
+                    const active = cat === selected || (cat === 'All' && selected === '');
+                    return (
+                        <button
+                            key={cat}
+                            onClick={() => onSelect(cat === 'All' ? '' : cat)}
+                            style={{
+                                flexShrink: 0,
+                                padding: '7px 15px',
+                                borderRadius: 8,
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: 13,
+                                fontWeight: active ? 600 : 500,
+                                fontFamily: 'Roboto, Inter, sans-serif',
+                                whiteSpace: 'nowrap',
+                                transition: 'background 0.15s, color 0.15s',
+                                background: active ? '#f1f1f1' : '#272727',
+                                color:      active ? '#0f0f0f'  : '#f1f1f1',
+                            }}
+                            onMouseEnter={e => {
+                                if (!active) e.currentTarget.style.background = '#383838';
+                            }}
+                            onMouseLeave={e => {
+                                if (!active) e.currentTarget.style.background = '#272727';
+                            }}
+                        >
+                            {cat}
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* Right scroll arrow */}
+            {canScrollRight && (
+                <div style={{
+                    position: 'absolute', right: 0, top: 0, bottom: 0, zIndex: 10,
+                    display: 'flex', alignItems: 'center',
+                    background: 'linear-gradient(270deg, #0f0f0f 70%, transparent 100%)',
+                    paddingLeft: 16,
+                }}>
+                    <button
+                        onClick={() => scroll(1)}
+                        style={{
+                            width: 34, height: 34,
+                            borderRadius: '50%',
+                            border: '1px solid #3f3f3f',
+                            background: '#212121',
+                            color: '#f1f1f1',
+                            cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            transition: 'background 0.15s, transform 0.1s',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#383838'}
+                        onMouseLeave={e => e.currentTarget.style.background = '#212121'}
+                        title="Next categories"
+                    >
+                        <ChevronRight size={18} />
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
 
 export default function StudentDashboard() {
     const { user } = useContext(AuthContext);
 
     const [courses, setCourses] = useState([]);
-    const CS_CATEGORIES = [
-        "Software Development", "Databases", "Cloud & DevOps", 
-        "Cybersecurity", "Networking", "AI & Machine Learning", 
-        "Data Science", "Hardware & Systems"
-    ];
-
-    const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('');
     const [loading, setLoading] = useState(true);
     const [enrollingCourse, setEnrollingCourse] = useState(null);
 
     const fetchMarketplaceData = async () => {
         try {
-            const coursesRes = await api.get('/courses');
-            setCourses(Array.isArray(coursesRes.data) ? coursesRes.data : []);
-        } catch (error) {
-            console.error("Failed to load marketplace data", error);
+            const res = await api.get('/courses');
+            setCourses(Array.isArray(res.data) ? res.data : []);
+        } catch (err) {
+            console.error("Failed to load marketplace data", err);
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => {
-        fetchMarketplaceData();
-    }, []);
+    useEffect(() => { fetchMarketplaceData(); }, []);
 
-    const filteredCourses = courses.filter(course => {
-        const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            course.tutorName?.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesCategory = selectedCategory === '' || course.categoryName === selectedCategory;
-
-        return matchesSearch && matchesCategory;
-    });
+    const filteredCourses = courses.filter(c =>
+        selectedCategory === '' || c.categoryName === selectedCategory
+    );
 
     const handleEnrollClick = (course) => {
-        if (!user || !user.id) {
-            toast.error("Please log in to enroll in a course.");
-            return;
-        }
+        if (!user?.id) { toast.error("Please log in to enroll."); return; }
         setEnrollingCourse(course);
     };
 
@@ -56,164 +200,254 @@ export default function StudentDashboard() {
         if (!enrollingCourse) return;
         const courseId = enrollingCourse.id;
         setEnrollingCourse(null);
-        
         toast.loading("Processing Mock Payment...", { id: "payment" });
         setTimeout(async () => {
             try {
                 await api.post(`/bookings/student/${user.id}/course/${courseId}/slot/${slotId}`);
-                toast.success("Payment Successful! Successfully enrolled!", { id: "payment" });
+                toast.success("Enrolled successfully!", { id: "payment" });
                 fetchMarketplaceData();
-            } catch (error) {
-                console.error("Enrollment Error:", error);
-                toast.error(error.response?.data?.message || 'Failed to enroll in course. Check the console for details.', { id: "payment" });
+            } catch (err) {
+                toast.error(err.response?.data?.message || 'Enrollment failed.', { id: "payment" });
             }
         }, 1500);
     };
 
+    const slotStats = (course) => {
+        if (!course.slots?.length) return { totalSlots: 0, seatsLeft: 0 };
+        return {
+            totalSlots: course.slots.length,
+            seatsLeft: course.slots.reduce((s, sl) => s + Math.max(0, (sl.maxSeats || 0) - (sl.currentEnrolled || 0)), 0),
+        };
+    };
+
     if (loading) {
-        return <div className="text-center py-20 text-gray-500 font-sans text-sm animate-pulse">Scanning marketplace...</div>;
+        return (
+            <div style={{ color: T.muted, background: T.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>
+                Scanning marketplace...
+            </div>
+        );
     }
 
     return (
-        <div className="flex flex-col w-full max-w-6xl mx-auto pt-8 px-4 pb-16 font-sans">
-            <div className="mb-8">
-                <h1 className="text-3xl md:text-4xl text-gray-900 font-bold tracking-tight mb-3">Discover Modules</h1>
-                <p className="text-sm md:text-base text-gray-600">Find the right peer tutor to level up your skills.</p>
+        <div style={{ background: T.bg, minHeight: '100vh', padding: '20px 24px 64px', fontFamily: 'Roboto, Inter, sans-serif', color: T.text }}>
+
+            {/* ── YouTube-style category chip bar (sticky) ── */}
+            <div style={{
+                position: 'sticky', top: 0, zIndex: 30,
+                background: T.bg,
+                paddingTop: 12,
+                paddingBottom: 4,
+                marginBottom: 8,
+            }}>
+                <CategoryBar selected={selectedCategory} onSelect={setSelectedCategory} />
             </div>
 
-            {/* Search and Filter Area */}
-            <div className="bg-white border border-gray-200 p-6 rounded-xl shadow-sm mb-10">
-                <div className="flex flex-col md:flex-row gap-4">
-                    <div className="flex-1 relative">
-                        <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                        <input
-                            type="text"
-                            placeholder="Search courses or tutors..."
-                            className="w-full bg-gray-50 text-gray-900 placeholder-gray-400 text-sm rounded-lg border border-gray-300 pl-11 pr-4 py-3.5 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-                    <div className="w-full md:w-72 relative">
-                        <Filter size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                        <select
-                            className="w-full bg-gray-50 text-gray-900 text-sm rounded-lg border border-gray-300 pl-11 pr-10 py-3.5 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 appearance-none"
-                            value={selectedCategory}
-                            onChange={(e) => setSelectedCategory(e.target.value)}
-                        >
-                            <option value="">All Categories</option>
-                            {CS_CATEGORIES.map(cat => (
-                                <option key={cat} value={cat}>{cat}</option>
-                            ))}
-                        </select>
-                        <ChevronDown size={20} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                    </div>
-                </div>
-            </div>
-
-            <div className="flex justify-between items-end mb-6">
-                <h2 className="text-xl text-gray-900 font-bold">
-                    <span className="text-blue-600">{filteredCourses.length}</span> Modules Found
-                </h2>
-            </div>
-
+            {/* ── Course grid ── */}
             {filteredCourses.length === 0 ? (
-                <div className="text-center py-24 bg-white rounded-xl border border-dashed border-gray-300 text-gray-500 text-sm">
-                    No results found. Try adjusting your search filters.
+                <div style={{
+                    textAlign: 'center', padding: '80px 0',
+                    border: `1.5px dashed ${T.border}`, borderRadius: 16,
+                    color: T.muted, fontSize: 14,
+                }}>
+                    No courses found for this category.
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredCourses.map((course, idx) => {
-                        const bgColors = ['bg-indigo-50', 'bg-blue-50', 'bg-purple-50', 'bg-pink-50'];
-                        const cardBg = bgColors[idx % bgColors.length];
-                        
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))',
+                    gap: '20px 16px',
+                }}>
+                    {filteredCourses.map(course => {
+                        const { totalSlots, seatsLeft } = slotStats(course);
                         return (
-                        <div key={course.id} className={`${cardBg} rounded-[32px] p-3 transition-all hover:-translate-y-1 hover:shadow-md group flex flex-col`}>
-                            <div className="bg-white rounded-2xl p-4 shadow-sm flex flex-col h-full border border-slate-100">
-                                {/* Image */}
-                                <div className="relative w-full aspect-video bg-slate-100 rounded-xl overflow-hidden mb-4">
-                                    {course.thumbnailUrl ? (
-                                        <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs font-medium tracking-wider uppercase bg-slate-50">No Preview</div>
-                                    )}
-                                    <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-white/95 border border-slate-200 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-sm">
-                                        <span className="w-2 h-2 rounded-full bg-secondary"></span>
-                                        <span className="text-[11px] text-slate-700 font-semibold">{course.categoryName}</span>
-                                    </div>
-                                </div>
-
-                                {/* Content */}
-                                <div className="flex flex-col flex-grow">
-                                    <h3 className="text-lg text-slate-800 font-bold mb-2 group-hover:text-primary transition-colors line-clamp-2 leading-tight">
-                                        {course.title}
-                                    </h3>
-                                    
-                                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 mt-auto mb-4 min-h-[72px]">
-                                        {course.slots?.length > 0 ? (
-                                            <div className="flex flex-wrap gap-2">
-                                                {course.slots.slice(0, 3).map(slot => {
-                                                    const available = slot.maxSeats - slot.currentEnrolled;
-                                                    const isFull = available <= 0;
-                                                    return (
-                                                        <div key={slot.id} className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-lg border text-[11px] min-w-[65px] font-medium shadow-sm ${isFull ? 'bg-red-50 border-red-100 text-red-600' : 'bg-white border-slate-200 text-secondary'}`}>
-                                                            <span className="font-bold mb-0.5 tracking-tight">{new Date(slot.slotDateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                                                            <span className="text-[9px] uppercase font-semibold">{isFull ? 'Full' : `${available} Left`}</span>
-                                                        </div>
-                                                    );
-                                                })}
-                                                {course.slots.length > 3 && (
-                                                    <div className="flex items-center justify-center py-1 px-2.5 rounded-lg border bg-white border-slate-200 text-slate-500 text-[11px] font-bold shadow-sm">
-                                                        +{course.slots.length - 3}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ) : (
-                                            <p className="text-[11px] text-slate-500 text-center py-2 font-medium">No active slots available</p>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Footer Row 1: Author & Price */}
-                                <div className="flex items-center justify-between mb-3">
-                                    <Link to={`/profile/${course.tutorId}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                                        <img src={course.authorAvatar || `https://ui-avatars.com/api/?name=${course.tutorName}&background=EBF5FF&color=00C2CB`} alt="Tutor" className="w-8 h-8 rounded-full object-cover ring-2 ring-slate-50" />
-                                        <span className="text-sm text-slate-700 font-semibold">{course.tutorName}</span>
-                                    </Link>
-                                    <div className="flex items-center gap-2">
-                                        {course.demoVideoUrl && (
-                                            <button onClick={() => window.open(course.demoVideoUrl, '_blank')} className="text-secondary hover:text-secondary-hover transition-colors">
-                                                <PlayCircle size={20} />
-                                            </button>
-                                        )}
-                                        <span className="text-lg text-secondary font-bold">${course.price}</span>
-                                    </div>
-                                </div>
-
-                                {/* Footer Row 2: Stats & Enroll */}
-                                <div className="flex items-center justify-between border-t border-slate-100 pt-3">
-                                    <div className="flex items-center gap-3 text-xs font-semibold text-slate-500">
-                                        <span className="flex items-center gap-1"><span className="text-yellow-400">⭐</span> 4.8</span>
-                                        <span className="flex items-center gap-1">👥 500+</span>
-                                    </div>
-                                    <button onClick={() => handleEnrollClick(course)} className="bg-primary hover:bg-primary-hover text-white font-medium rounded-xl px-4 py-1.5 flex items-center justify-center gap-1.5 transition-colors text-sm shadow-sm">
-                                        <PlusCircle size={16} />
-                                        <span>Enroll</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )})}
+                            <CourseCard
+                                key={course.id}
+                                course={course}
+                                totalSlots={totalSlots}
+                                seatsLeft={seatsLeft}
+                                onEnroll={handleEnrollClick}
+                            />
+                        );
+                    })}
                 </div>
             )}
 
             {enrollingCourse && (
-                <EnrollmentModal 
-                    course={enrollingCourse} 
-                    onClose={() => setEnrollingCourse(null)} 
-                    onConfirm={handleConfirmEnrollment} 
+                <EnrollmentModal
+                    course={enrollingCourse}
+                    onClose={() => setEnrollingCourse(null)}
+                    onConfirm={handleConfirmEnrollment}
                 />
             )}
+        </div>
+    );
+}
+
+/* ── YouTube-style dark course card with hover highlighting ── */
+function CourseCard({ course, totalSlots, seatsLeft, onEnroll }) {
+    const [hovered, setHovered] = useState(false);
+    const noSeats = totalSlots === 0 || seatsLeft === 0;
+
+    return (
+        <div
+            onClick={() => onEnroll(course)}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            style={{
+                display: 'flex',
+                flexDirection: 'column',
+                cursor: 'pointer',
+                borderRadius: 16,
+                padding: '10px',
+                background: hovered ? '#212121' : 'transparent',
+                border: hovered ? '1px solid #333333' : '1px solid transparent',
+                transition: 'background 0.2s ease, border-color 0.2s ease, transform 0.2s ease',
+                transform: hovered ? 'translateY(-2px)' : 'none',
+            }}
+        >
+            {/* 16:9 Thumbnail */}
+            <div style={{
+                position: 'relative',
+                width: '100%',
+                paddingTop: '56.25%',
+                borderRadius: 12,
+                overflow: 'hidden',
+                background: '#1c1c1c',
+                marginBottom: 12,
+                flexShrink: 0,
+            }}>
+                {course.thumbnailUrl ? (
+                    <img
+                        src={course.thumbnailUrl}
+                        alt={course.title}
+                        style={{
+                            position: 'absolute', inset: 0,
+                            width: '100%', height: '100%',
+                            objectFit: 'cover', display: 'block',
+                            transform: hovered ? 'scale(1.03)' : 'scale(1)',
+                            transition: 'transform 0.4s ease',
+                        }}
+                    />
+                ) : (
+                    <div style={{
+                        position: 'absolute', inset: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: '#666', fontSize: 11, fontWeight: 600,
+                        letterSpacing: '0.08em', textTransform: 'uppercase',
+                    }}>
+                        No Preview
+                    </div>
+                )}
+
+                {/* Category badge */}
+                {course.categoryName && (
+                    <span style={{
+                        position: 'absolute', bottom: 8, left: 8,
+                        background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)',
+                        color: '#f1f1f1', fontSize: 11, fontWeight: 600,
+                        padding: '3px 8px', borderRadius: 4,
+                    }}>
+                        {course.categoryName}
+                    </span>
+                )}
+
+                {/* Demo play */}
+                {course.demoVideoUrl && (
+                    <button
+                        onClick={e => { e.stopPropagation(); window.open(course.demoVideoUrl, '_blank'); }}
+                        style={{
+                            position: 'absolute', bottom: 8, right: 8,
+                            background: 'rgba(0,0,0,0.75)', border: 'none',
+                            borderRadius: '50%', width: 32, height: 32,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: 'pointer', color: '#f1f1f1',
+                            transition: 'transform 0.15s ease',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+                        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                    >
+                        <PlayCircle size={18} />
+                    </button>
+                )}
+            </div>
+
+            {/* Info row — avatar + text (YouTube style) */}
+            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <Link to={`/profile/${course.tutorId}`} onClick={e => e.stopPropagation()}>
+                    <img
+                        src={course.authorAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(course.tutorName || 'T')}&background=1a2a2a&color=00C2CB`}
+                        alt={course.tutorName}
+                        style={{
+                            width: 36, height: 36, borderRadius: '50%',
+                            objectFit: 'cover', flexShrink: 0,
+                            border: '1.5px solid #3f3f3f',
+                        }}
+                    />
+                </Link>
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    {/* Title */}
+                    <h3 style={{
+                        margin: '0 0 4px', fontSize: 14, fontWeight: 600,
+                        color: hovered ? '#00C2CB' : '#f1f1f1',
+                        lineHeight: 1.4,
+                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        transition: 'color 0.15s',
+                    }}>
+                        {course.title}
+                    </h3>
+
+                    {/* Tutor */}
+                    <p style={{ margin: '0 0 4px', fontSize: 12, color: '#aaaaaa' }}>
+                        {course.tutorName}
+                    </p>
+
+                    {/* Slots + price */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <Clock size={11} color={noSeats ? '#ff4444' : '#aaaaaa'} />
+                            <span style={{
+                                fontSize: 12,
+                                color: noSeats ? '#ff4444' : '#aaaaaa',
+                                fontWeight: noSeats ? 600 : 400,
+                            }}>
+                                {noSeats
+                                    ? 'Fully booked'
+                                    : `${totalSlots} slot${totalSlots !== 1 ? 's' : ''} · ${seatsLeft} left`}
+                            </span>
+                        </div>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#00C2CB', whiteSpace: 'nowrap' }}>
+                            {course.price === 0 ? 'Free' : `₹${course.price}`}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Enroll button */}
+            <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onEnroll(course);
+                }}
+                disabled={noSeats}
+                style={{
+                    marginTop: 10,
+                    width: '100%',
+                    padding: '8px 0',
+                    borderRadius: 8,
+                    border: 'none',
+                    cursor: noSeats ? 'not-allowed' : 'pointer',
+                    background: noSeats ? '#181818' : hovered ? '#00C2CB' : '#1f3434',
+                    color: noSeats ? '#555' : '#fff',
+                    fontSize: 13, fontWeight: 600,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    transition: 'background 0.2s ease',
+                }}
+            >
+                <PlusCircle size={14} />
+                {noSeats ? 'Fully Booked' : 'Enroll Now'}
+            </button>
         </div>
     );
 }
