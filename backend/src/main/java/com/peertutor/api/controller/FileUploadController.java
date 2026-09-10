@@ -19,7 +19,8 @@ import java.util.UUID;
 @CrossOrigin
 public class FileUploadController {
 
-    private final String UPLOAD_DIR = "uploads/";
+    // Absolute path — works regardless of which directory the backend is launched from
+    private static final String UPLOAD_DIR = System.getProperty("user.home") + "/peertutor/uploads/";
 
     @PostMapping("/upload")
     public ResponseEntity<Map<String, String>> uploadFile(@RequestParam("file") MultipartFile file) {
@@ -54,7 +55,7 @@ public class FileUploadController {
 
         } catch (IOException e) {
             e.printStackTrace();
-            response.put("error", "Could not store file");
+            response.put("error", "Could not store file: " + e.getMessage());
             return ResponseEntity.internalServerError().body(response);
         }
     }

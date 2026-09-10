@@ -8,7 +8,9 @@ import com.peertutor.api.repository.BookingRepository;
 import com.peertutor.api.repository.ReviewRepository;
 import com.peertutor.api.repository.TutorProfileRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -22,13 +24,33 @@ public class ReviewService {
 
     public Review submitReview(Long studentId, Long bookingId, ReviewRequest request) {
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new RuntimeException("Booking not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
 
+        // Ensure the student owns this booking
         if (!booking.getStudent().getId().equals(studentId)) {
-            throw new RuntimeException("Unauthorized: This is not your booking.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Unauthorized: This is not your booking.");
         }
 
-        // We only need the booking, rating, and comment!
+        // ── Strict Review Gateway ──────────────────────────────────────────
+        // The slot MUST be CLOSED for a review to be submitted
+        if (booking.getSlot() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "No session slot found for this booking.");
+        }
+        String slotStatus = booking.getSlot().getSessionStatus();
+        if (!"CLOSED".equals(slotStatus)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Reviews can only be submitted after a session has been closed by the tutor. Current status: " + slotStatus);
+        }
+
+        // Verify the student actually has a booking for that slot
+        boolean hasValidBooking = bookingRepository.existsByStudentIdAndSlotId(studentId, booking.getSlot().getId());
+        if (!hasValidBooking) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "You are not enrolled in this session.");
+        }
+        // ──────────────────────────────────────────────────────────────────
+
         Review review = Review.builder()
                 .booking(booking)
                 .rating(request.getRating())
@@ -37,7 +59,7 @@ public class ReviewService {
 
         Review savedReview = reviewRepository.save(review);
 
-        // Grab the tutor profile from the course author to update their rating
+        // Update tutor's average rating
         TutorProfile tutor = booking.getCourse().getAuthor().getTutorProfile();
         updateTutorRating(tutor);
 
@@ -45,7 +67,6 @@ public class ReviewService {
     }
 
     private void updateTutorRating(TutorProfile tutor) {
-        // Using the updated repository method
         List<Review> tutorReviews = reviewRepository.findByBookingCourseAuthorId(tutor.getUser().getId());
         if (tutorReviews.isEmpty()) return;
 
@@ -59,8 +80,6 @@ public class ReviewService {
     }
 
     public List<Review> getReviewsByTutor(Long tutorId) {
-        // Wait, if it takes tutorId but the method takes authorId...
-        // Let's assume tutorId here refers to the User ID for now as per universal user model
         return reviewRepository.findByBookingCourseAuthorId(tutorId);
     }
 }

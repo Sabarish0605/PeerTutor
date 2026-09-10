@@ -17,9 +17,10 @@ export default function Login() {
         setError('');
         try {
             const response = await api.post('/auth/login', { email, password });
-            login(response.data, response.data.token);
-            if (response.data.role === 'TUTOR') {
-                navigate('/tutor/dashboard');
+            const data = response.data;
+            login(data, data.token);
+            if (data.role === 'TUTOR') {
+                navigate('/studio');
             } else {
                 navigate('/discover');
             }

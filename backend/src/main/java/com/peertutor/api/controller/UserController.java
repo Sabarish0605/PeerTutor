@@ -26,6 +26,28 @@ public class UserController {
     private final CourseRepository courseRepository;
     private final SubscriptionRepository subscriptionRepository;
 
+    @GetMapping("/me")
+    public ResponseEntity<Map<String, Object>> getCurrentUser(Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).build();
+        }
+        String email = principal.getName();
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+        Map<String, Object> profile = new HashMap<>();
+        profile.put("id", user.getId());
+        profile.put("userId", user.getId());
+        profile.put("name", user.getName());
+        profile.put("email", user.getEmail());
+        profile.put("role", user.getRole());
+        profile.put("profileImage", user.getProfileImage());
+        profile.put("avatarUrl", user.getProfileImage());
+        profile.put("fieldOfStudy", user.getFieldOfStudy());
+        profile.put("bio", user.getBio());
+        profile.put("portfolioUrl", user.getPortfolioUrl());
+        profile.put("repositoryUrl", user.getRepositoryUrl());
+        return ResponseEntity.ok(profile);
+    }
+
     @PutMapping("/me")
     public ResponseEntity<User> updateProfile(@RequestBody ProfileUpdateRequest request, Principal principal) {
         if (principal == null) {
@@ -48,6 +70,12 @@ public class UserController {
         if (request.getAvatarUrl() != null) {
             user.setProfileImage(request.getAvatarUrl());
         }
+        if (request.getPortfolioUrl() != null) {
+            user.setPortfolioUrl(request.getPortfolioUrl());
+        }
+        if (request.getRepositoryUrl() != null) {
+            user.setRepositoryUrl(request.getRepositoryUrl());
+        }
 
         User updatedUser = userRepository.save(user);
         return ResponseEntity.ok(updatedUser);
@@ -60,8 +88,11 @@ public class UserController {
         profile.put("id", user.getId());
         profile.put("name", user.getName());
         profile.put("avatarUrl", user.getProfileImage());
+        profile.put("profileImage", user.getProfileImage());
         profile.put("fieldOfStudy", user.getFieldOfStudy());
         profile.put("bio", user.getBio());
+        profile.put("portfolioUrl", user.getPortfolioUrl());
+        profile.put("repositoryUrl", user.getRepositoryUrl());
         
         long subscribersCount = 0;
         double avgRating = 0.0;

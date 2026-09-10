@@ -7,13 +7,23 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     const { user, loading } = useContext(AuthContext);
     const location = useLocation();
 
+    // Still initializing — show spinner
     if (loading) {
         return <div className="text-center py-20">Loading...</div>;
     }
 
-    if (!user) {
-        // toast.error("Please login to access this page.");
-        return <Navigate to="/" replace />;
+    // No user in context — but check localStorage as fallback to prevent
+    // flash-redirect during React state settling after login
+    const hasToken = !!localStorage.getItem('token');
+    const storedUserStr = localStorage.getItem('user');
+
+    if (!user && !hasToken) {
+        return <Navigate to="/login" replace />;
+    }
+
+    // If token exists but user state hasn't settled yet, show brief loading
+    if (!user && hasToken) {
+        return <div className="text-center py-20">Loading...</div>;
     }
 
     if (allowedRoles && !allowedRoles.includes(user.role)) {
@@ -22,7 +32,7 @@ export default function ProtectedRoute({ children, allowedRoles }) {
             return <Navigate to="/tutor/onboarding" replace />;
         }
         toast.error("You do not have permission to access this page.");
-        return <Navigate to="/" replace />;
+        return <Navigate to="/discover" replace />;
     }
 
     return children;

@@ -26,7 +26,14 @@ export default function UserProfile() {
 
     // Modal states
     const [isEditing, setIsEditing] = useState(false);
-    const [editForm, setEditForm] = useState({ name: "", fieldOfStudy: "", bio: "", avatarUrl: "" });
+    const [editForm, setEditForm] = useState({
+        name: "",
+        fieldOfStudy: "",
+        bio: "",
+        avatarUrl: "",
+        portfolioUrl: "",
+        repositoryUrl: ""
+    });
     const [uploading, setUploading] = useState(false);
     const [enrollingCourse, setEnrollingCourse] = useState(null);
 
@@ -43,7 +50,9 @@ export default function UserProfile() {
                         name: res.data.name || "",
                         fieldOfStudy: res.data.fieldOfStudy || "",
                         bio: res.data.bio || "",
-                        avatarUrl: res.data.avatarUrl || ""
+                        avatarUrl: res.data.avatarUrl || res.data.profileImage || "",
+                        portfolioUrl: res.data.portfolioUrl || "",
+                        repositoryUrl: res.data.repositoryUrl || ""
                     });
                 }
                 if (!isOwnProfile && user?.id) {
@@ -99,14 +108,19 @@ export default function UserProfile() {
                 fullName: editForm.name,
                 fieldOfStudy: editForm.fieldOfStudy,
                 bio: editForm.bio,
-                avatarUrl: editForm.avatarUrl
+                avatarUrl: editForm.avatarUrl,
+                portfolioUrl: editForm.portfolioUrl,
+                repositoryUrl: editForm.repositoryUrl
             });
             setProfile(prev => ({
                 ...prev,
                 name: res.data.name,
                 fieldOfStudy: res.data.fieldOfStudy,
                 bio: res.data.bio,
-                avatarUrl: res.data.profileImage
+                avatarUrl: res.data.profileImage,
+                profileImage: res.data.profileImage,
+                portfolioUrl: res.data.portfolioUrl,
+                repositoryUrl: res.data.repositoryUrl
             }));
             login(res.data, localStorage.getItem("token"));
             setIsEditing(false);
@@ -235,26 +249,23 @@ export default function UserProfile() {
             </div>
 
             <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
-                {/* ── YouTube-Style Channel Banner (Carbon / Tech Texture with Stats Badges) ── */}
+                {/* ── Unified Channel Profile Banner (Banner acts as backdrop for avatar, identity, and data) ── */}
                 <div style={{
-                    height: 200,
                     width: "100%",
-                    borderRadius: 20,
+                    borderRadius: 24,
                     position: "relative",
                     overflow: "hidden",
                     background: `
-                        radial-gradient(ellipse at 80% 20%, rgba(0, 194, 203, 0.25) 0%, transparent 60%),
-                        radial-gradient(ellipse at 20% 90%, rgba(20, 40, 60, 0.6) 0%, transparent 70%),
-                        linear-gradient(135deg, #121212 0%, #1a1a1a 50%, #0d151a 100%)
+                        radial-gradient(ellipse at 85% 20%, rgba(0, 194, 203, 0.22) 0%, transparent 60%),
+                        radial-gradient(ellipse at 15% 85%, rgba(20, 45, 65, 0.5) 0%, transparent 70%),
+                        linear-gradient(135deg, #131517 0%, #1a1c1e 50%, #0e1418 100%)
                     `,
                     border: "1px solid #272727",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "0 36px",
-                    boxShadow: "0 8px 32px rgba(0,0,0,0.4)"
+                    boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
+                    padding: "32px 36px",
+                    marginBottom: 20,
                 }}>
-                    {/* Subtle Carbon Grid Pattern */}
+                    {/* Subtle Carbon / Tech Grid Texture Backdrop */}
                     <div style={{
                         position: "absolute", inset: 0, pointerEvents: "none",
                         backgroundImage: `
@@ -268,250 +279,242 @@ export default function UserProfile() {
                         opacity: 0.35,
                     }} />
 
-                    {/* Left Banner Branding / Motto */}
-                    <div style={{ position: "relative", zIndex: 2 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                            <span style={{
-                                width: 8, height: 8, borderRadius: "50%", background: "#00C2CB",
-                                boxShadow: "0 0 10px #00C2CB"
-                            }} />
-                            <span style={{ fontSize: 12, fontWeight: 700, color: "#00C2CB", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                                FLUX Peer Tutor Hub
-                            </span>
-                        </div>
-                        <h2 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: "#ffffff", letterSpacing: "-0.5px" }}>
-                            {profile?.name}
-                        </h2>
-                        <p style={{ margin: "4px 0 0", fontSize: 13, color: "#aaaaaa" }}>
-                            {profile?.fieldOfStudy || "Interactive 1-on-1 Learning & Code Mentorship"}
-                        </p>
-                    </div>
-
-                    {/* Right Banner Stats Badges (Inspired by MotoWagon reference) */}
+                    {/* Content inside Banner: Avatar Left, Profile Details Center, Actions Right */}
                     <div style={{
-                        display: "flex",
-                        gap: 12,
                         position: "relative",
                         zIndex: 2,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 28,
                         flexWrap: "wrap",
-                        justifyContent: "flex-end"
+                        justifyContent: "space-between"
                     }}>
-                        {[
-                            { label: "COURSES", value: courses.length },
-                            { label: "STUDENTS", value: profile?.subscribersCount || 0 },
-                            { label: "RATING", value: profile?.avgRating ? `${Number(profile.avgRating).toFixed(1)} ★` : "5.0 ★" },
-                            { label: "REVIEWS", value: reviews.length },
-                        ].map((stat, i) => (
-                            <div
-                                key={i}
-                                style={{
-                                    background: "rgba(15, 15, 15, 0.75)",
-                                    backdropFilter: "blur(8px)",
-                                    border: "1px solid rgba(255, 255, 255, 0.1)",
-                                    borderRadius: 12,
-                                    padding: "8px 14px",
-                                    textAlign: "center",
-                                    minWidth: 78,
-                                }}
-                            >
-                                <div style={{ fontSize: 16, fontWeight: 800, color: "#ffffff", lineHeight: 1.1 }}>
-                                    {stat.value}
-                                </div>
-                                <div style={{ fontSize: 10, fontWeight: 700, color: "#00C2CB", letterSpacing: "0.08em", marginTop: 4 }}>
-                                    {stat.label}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* ── Creator Profile Header (Avatar Left, Info, Actions Right) ── */}
-                <div style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 24,
-                    padding: "20px 8px 24px",
-                    borderBottom: "1px solid #272727",
-                    position: "relative"
-                }}>
-                    {/* Big Circular Avatar with YouTube-Style Ring */}
-                    <div style={{
-                        width: 128,
-                        height: 128,
-                        borderRadius: "50%",
-                        border: "4px solid #0f0f0f",
-                        boxShadow: "0 0 0 2px #272727, 0 8px 24px rgba(0,0,0,0.5)",
-                        background: "#1c1c1c",
-                        overflow: "hidden",
-                        flexShrink: 0,
-                        marginTop: -44,
-                        position: "relative",
-                        zIndex: 3,
-                    }}>
-                        {profile?.avatarUrl ? (
-                            <img
-                                src={profile.avatarUrl}
-                                alt={profile?.name}
-                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                            />
-                        ) : (
+                        {/* Left: Avatar + Details */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 24, flex: 1, minWidth: 320 }}>
+                            {/* Profile Squircle Avatar */}
                             <div style={{
-                                width: "100%", height: "100%",
-                                display: "flex", alignItems: "center", justifyContent: "center",
-                                background: "#1a3a3a", color: "#00C2CB",
-                                fontSize: 44, fontWeight: 800
+                                width: 110,
+                                height: 110,
+                                borderRadius: 22,
+                                border: "2px solid rgba(0, 194, 203, 0.4)",
+                                boxShadow: "0 8px 24px rgba(0,0,0,0.6), 0 0 15px rgba(0, 194, 203, 0.15)",
+                                background: "#1c1c1c",
+                                overflow: "hidden",
+                                flexShrink: 0,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center"
                             }}>
-                                {avatarInitial}
+                                {profile?.avatarUrl || profile?.profileImage ? (
+                                    <img
+                                        src={profile?.avatarUrl || profile?.profileImage}
+                                        alt={profile?.name}
+                                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                    />
+                                ) : (
+                                    <div style={{
+                                        width: "100%", height: "100%",
+                                        display: "flex", alignItems: "center", justifyContent: "center",
+                                        background: "#162e2e", color: "#00C2CB",
+                                        fontSize: 40, fontWeight: 800
+                                    }}>
+                                        {avatarInitial}
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </div>
 
-                    {/* Creator Identity & Meta */}
-                    <div style={{ flex: 1, minWidth: 0, paddingTop: 4 }}>
-                        {/* Name + Verified Checkmark */}
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                            <h1 style={{
-                                margin: 0, fontSize: 24, fontWeight: 800,
-                                color: "#f1f1f1", letterSpacing: "-0.4px"
-                            }}>
-                                {profile?.name}
-                            </h1>
-                            <span title="Verified FLUX Tutor" style={{ display: "inline-flex", alignItems: "center", color: "#00C2CB" }}>
-                                <CheckCircle2 size={18} fill="#00C2CB" color="#0f0f0f" />
-                            </span>
+                            {/* Creator Identity & Meta */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                {/* Name + Verified FLUX Badge */}
+                                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                    <h1 style={{
+                                        margin: 0, fontSize: 26, fontWeight: 800,
+                                        color: "#ffffff", letterSpacing: "-0.5px"
+                                    }}>
+                                        {profile?.name}
+                                    </h1>
+                                    <span title="Verified FLUX Tutor" style={{ display: "inline-flex", alignItems: "center", color: "#00C2CB" }}>
+                                        <CheckCircle2 size={19} fill="#00C2CB" color="#0f0f0f" />
+                                    </span>
+                                </div>
+
+                                {/* Handle & Clean Stats Meta Line (YouTube format) */}
+                                <div style={{
+                                    display: "flex", alignItems: "center", gap: 8,
+                                    fontSize: 13, color: "#aaaaaa", marginTop: 4, flexWrap: "wrap"
+                                }}>
+                                    <span style={{ fontWeight: 600, color: "#f1f1f1" }}>{handleTag}</span>
+                                    <span>•</span>
+                                    <span>{profile?.subscribersCount || 0} subscriber{profile?.subscribersCount !== 1 ? 's' : ''}</span>
+                                    <span>•</span>
+                                    <span>{courses.length} course{courses.length !== 1 ? 's' : ''}</span>
+                                    {reviews.length > 0 && (
+                                        <>
+                                            <span>•</span>
+                                            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                                <Star size={13} fill="#facc15" color="#facc15" />
+                                                <strong style={{ color: "#f1f1f1" }}>
+                                                    {profile?.avgRating ? Number(profile.avgRating).toFixed(1) : "5.0"}
+                                                </strong>
+                                                <span>({reviews.length} reviews)</span>
+                                            </span>
+                                        </>
+                                    )}
+                                </div>
+
+                                {/* Bio Snippet */}
+                                <p style={{
+                                    margin: "8px 0 0",
+                                    fontSize: 13,
+                                    color: "#cccccc",
+                                    lineHeight: 1.5,
+                                    maxWidth: 680,
+                                }}>
+                                    {profile?.bio || "Peer tutor helping university students and developers excel in computer science, system architecture, and modern programming."}
+                                </p>
+
+                                {/* Badges & Interactive Links: Field of Study, Code/Repos, Portfolio */}
+                                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
+                                    <span style={{
+                                        display: "inline-flex", alignItems: "center", gap: 5,
+                                        fontSize: 12, color: "#00C2CB", fontWeight: 600,
+                                        background: "rgba(0,194,203,0.12)",
+                                        border: "1px solid rgba(0,194,203,0.3)",
+                                        padding: "4px 12px", borderRadius: 16
+                                    }}>
+                                        🎓 {profile?.fieldOfStudy || "Computer Science"}
+                                    </span>
+
+                                    {/* Repository Link */}
+                                    {profile?.repositoryUrl ? (
+                                        <a
+                                            href={profile.repositoryUrl.startsWith("http") ? profile.repositoryUrl : `https://${profile.repositoryUrl}`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            style={{
+                                                display: "inline-flex", alignItems: "center", gap: 6,
+                                                fontSize: 12, color: "#f1f1f1", textDecoration: "none",
+                                                background: "rgba(255,255,255,0.06)", border: "1px solid #383838",
+                                                padding: "4px 12px", borderRadius: 16, transition: "background 0.15s, border-color 0.15s"
+                                            }}
+                                            onMouseEnter={e => { e.currentTarget.style.background = "#2a2a2a"; e.currentTarget.style.borderColor = "#00C2CB"; }}
+                                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "#383838"; }}
+                                        >
+                                            <Code2 size={13} color="#00C2CB" />
+                                            <span>Code / Repos</span>
+                                            <ExternalLink size={10} color="#888" />
+                                        </a>
+                                    ) : (
+                                        isOwnProfile ? (
+                                            <button
+                                                onClick={() => setIsEditing(true)}
+                                                style={{
+                                                    display: "inline-flex", alignItems: "center", gap: 6,
+                                                    fontSize: 12, color: "#888", background: "rgba(255,255,255,0.04)",
+                                                    border: "1px dashed #444", padding: "4px 12px", borderRadius: 16,
+                                                    cursor: "pointer", transition: "color 0.15s"
+                                                }}
+                                                onMouseEnter={e => e.currentTarget.style.color = "#00C2CB"}
+                                                onMouseLeave={e => e.currentTarget.style.color = "#888"}
+                                            >
+                                                <Code2 size={13} />
+                                                <span>+ Add Repo Link</span>
+                                            </button>
+                                        ) : null
+                                    )}
+
+                                    {/* Portfolio Link */}
+                                    {profile?.portfolioUrl ? (
+                                        <a
+                                            href={profile.portfolioUrl.startsWith("http") ? profile.portfolioUrl : `https://${profile.portfolioUrl}`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            style={{
+                                                display: "inline-flex", alignItems: "center", gap: 6,
+                                                fontSize: 12, color: "#f1f1f1", textDecoration: "none",
+                                                background: "rgba(255,255,255,0.06)", border: "1px solid #383838",
+                                                padding: "4px 12px", borderRadius: 16, transition: "background 0.15s, border-color 0.15s"
+                                            }}
+                                            onMouseEnter={e => { e.currentTarget.style.background = "#2a2a2a"; e.currentTarget.style.borderColor = "#00C2CB"; }}
+                                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "#383838"; }}
+                                        >
+                                            <Globe size={13} color="#00C2CB" />
+                                            <span>Portfolio</span>
+                                            <ExternalLink size={10} color="#888" />
+                                        </a>
+                                    ) : (
+                                        isOwnProfile ? (
+                                            <button
+                                                onClick={() => setIsEditing(true)}
+                                                style={{
+                                                    display: "inline-flex", alignItems: "center", gap: 6,
+                                                    fontSize: 12, color: "#888", background: "rgba(255,255,255,0.04)",
+                                                    border: "1px dashed #444", padding: "4px 12px", borderRadius: 16,
+                                                    cursor: "pointer", transition: "color 0.15s"
+                                                }}
+                                                onMouseEnter={e => e.currentTarget.style.color = "#00C2CB"}
+                                                onMouseLeave={e => e.currentTarget.style.color = "#888"}
+                                            >
+                                                <Globe size={13} />
+                                                <span>+ Add Portfolio</span>
+                                            </button>
+                                        ) : null
+                                    )}
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Handle & Stats Line (YouTube Format) */}
-                        <div style={{
-                            display: "flex", alignItems: "center", gap: 8,
-                            fontSize: 13, color: "#aaaaaa", marginTop: 4, flexWrap: "wrap"
-                        }}>
-                            <span style={{ fontWeight: 600, color: "#f1f1f1" }}>{handleTag}</span>
-                            <span>•</span>
-                            <span>{profile?.subscribersCount || 0} subscriber{profile?.subscribersCount !== 1 ? 's' : ''}</span>
-                            <span>•</span>
-                            <span>{courses.length} course{courses.length !== 1 ? 's' : ''}</span>
-                            {reviews.length > 0 && (
-                                <>
-                                    <span>•</span>
-                                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                                        <Star size={13} fill="#facc15" color="#facc15" />
-                                        <strong style={{ color: "#f1f1f1" }}>
-                                            {profile?.avgRating ? Number(profile.avgRating).toFixed(1) : "5.0"}
-                                        </strong>
-                                        <span>({reviews.length} reviews)</span>
-                                    </span>
-                                </>
+                        {/* Right: Action Buttons: Edit Profile or Subscribe */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+                            {isOwnProfile ? (
+                                <button
+                                    onClick={() => setIsEditing(true)}
+                                    style={{
+                                        display: "inline-flex", alignItems: "center", gap: 8,
+                                        background: "rgba(39, 39, 39, 0.8)", backdropFilter: "blur(8px)",
+                                        color: "#f1f1f1", border: "1px solid #3f3f3f",
+                                        borderRadius: 20, padding: "10px 22px",
+                                        fontSize: 13, fontWeight: 700, cursor: "pointer",
+                                        transition: "background 0.15s, border-color 0.15s",
+                                        boxShadow: "0 4px 14px rgba(0,0,0,0.3)"
+                                    }}
+                                    onMouseEnter={e => { e.currentTarget.style.background = "#383838"; e.currentTarget.style.borderColor = "#555"; }}
+                                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(39, 39, 39, 0.8)"; e.currentTarget.style.borderColor = "#3f3f3f"; }}
+                                >
+                                    <Edit3 size={15} />
+                                    <span>Edit Profile</span>
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleSubscribe}
+                                    disabled={subscribing}
+                                    style={{
+                                        display: "inline-flex", alignItems: "center", gap: 6,
+                                        background: isSubscribed ? "rgba(39, 39, 39, 0.8)" : "#00C2CB",
+                                        color: isSubscribed ? "#f1f1f1" : "#0f0f0f",
+                                        border: isSubscribed ? "1px solid #3f3f3f" : "none",
+                                        borderRadius: 20, padding: "10px 26px",
+                                        fontSize: 13, fontWeight: 700, cursor: "pointer",
+                                        transition: "opacity 0.15s, transform 0.1s",
+                                        boxShadow: isSubscribed ? "none" : "0 4px 16px rgba(0, 194, 203, 0.35)"
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.opacity = "0.9"}
+                                    onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+                                >
+                                    {isSubscribed ? (
+                                        <>
+                                            <Check size={16} />
+                                            <span>Subscribed</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Plus size={16} strokeWidth={2.5} />
+                                            <span>Subscribe</span>
+                                        </>
+                                    )}
+                                </button>
                             )}
                         </div>
-
-                        {/* Bio snippet */}
-                        <p style={{
-                            margin: "8px 0 0",
-                            fontSize: 13,
-                            color: "#cccccc",
-                            lineHeight: 1.5,
-                            maxWidth: 720,
-                        }}>
-                            {profile?.bio || "Peer tutor helping university students and developers excel in computer science, system architecture, and modern programming."}
-                        </p>
-
-                        {/* Social / Tag Pills */}
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
-                            <span style={{
-                                display: "inline-flex", alignItems: "center", gap: 5,
-                                fontSize: 12, color: "#00C2CB", fontWeight: 500,
-                                background: "rgba(0,194,203,0.1)",
-                                border: "1px solid rgba(0,194,203,0.25)",
-                                padding: "3px 10px", borderRadius: 16
-                            }}>
-                                🎓 {profile?.fieldOfStudy || "Computer Science"}
-                            </span>
-
-                            <a
-                                href="https://github.com"
-                                target="_blank"
-                                rel="noreferrer"
-                                style={{
-                                    display: "inline-flex", alignItems: "center", gap: 5,
-                                    fontSize: 12, color: "#aaaaaa", textDecoration: "none",
-                                    background: "#1c1c1c", border: "1px solid #333333",
-                                    padding: "3px 10px", borderRadius: 16, transition: "color 0.15s"
-                                }}
-                                onMouseEnter={e => e.currentTarget.style.color = "#ffffff"}
-                                onMouseLeave={e => e.currentTarget.style.color = "#aaaaaa"}
-                            >
-                                <Code2 size={12} />
-                                <span>Code / Repos</span>
-                            </a>
-
-                            <a
-                                href="https://linkedin.com"
-                                target="_blank"
-                                rel="noreferrer"
-                                style={{
-                                    display: "inline-flex", alignItems: "center", gap: 5,
-                                    fontSize: 12, color: "#aaaaaa", textDecoration: "none",
-                                    background: "#1c1c1c", border: "1px solid #333333",
-                                    padding: "3px 10px", borderRadius: 16, transition: "color 0.15s"
-                                }}
-                                onMouseEnter={e => e.currentTarget.style.color = "#ffffff"}
-                                onMouseLeave={e => e.currentTarget.style.color = "#aaaaaa"}
-                            >
-                                <Globe size={12} />
-                                <span>Portfolio</span>
-                            </a>
-                        </div>
-                    </div>
-
-                    {/* Action Buttons: Subscribe or Edit Profile */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, marginTop: 4 }}>
-                        {isOwnProfile ? (
-                            <button
-                                onClick={() => setIsEditing(true)}
-                                style={{
-                                    display: "inline-flex", alignItems: "center", gap: 6,
-                                    background: "#272727", color: "#f1f1f1",
-                                    border: "1px solid #3f3f3f",
-                                    borderRadius: 20, padding: "9px 20px",
-                                    fontSize: 13, fontWeight: 700, cursor: "pointer",
-                                    transition: "background 0.15s"
-                                }}
-                                onMouseEnter={e => e.currentTarget.style.background = "#383838"}
-                                onMouseLeave={e => e.currentTarget.style.background = "#272727"}
-                            >
-                                <Edit3 size={15} />
-                                <span>Edit Profile</span>
-                            </button>
-                        ) : (
-                            <button
-                                onClick={handleSubscribe}
-                                disabled={subscribing}
-                                style={{
-                                    display: "inline-flex", alignItems: "center", gap: 6,
-                                    background: isSubscribed ? "#272727" : "#00C2CB",
-                                    color: isSubscribed ? "#f1f1f1" : "#0f0f0f",
-                                    border: isSubscribed ? "1px solid #3f3f3f" : "none",
-                                    borderRadius: 20, padding: "9px 24px",
-                                    fontSize: 13, fontWeight: 700, cursor: "pointer",
-                                    transition: "opacity 0.15s, transform 0.1s",
-                                }}
-                                onMouseEnter={e => e.currentTarget.style.opacity = "0.9"}
-                                onMouseLeave={e => e.currentTarget.style.opacity = "1"}
-                            >
-                                {isSubscribed ? (
-                                    <>
-                                        <Check size={16} />
-                                        <span>Subscribed</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Plus size={16} strokeWidth={2.5} />
-                                        <span>Subscribe</span>
-                                    </>
-                                )}
-                            </button>
-                        )}
                     </div>
                 </div>
 
@@ -1025,12 +1028,12 @@ export default function UserProfile() {
                             </div>
 
                             {/* Bio */}
-                            <div style={{ marginBottom: 20 }}>
+                            <div style={{ marginBottom: 14 }}>
                                 <label style={{ display: "block", fontSize: 11, color: "#888", fontWeight: 600, textTransform: "uppercase", marginBottom: 6 }}>
                                     Bio & Experience
                                 </label>
                                 <textarea
-                                    rows="4"
+                                    rows="3"
                                     value={editForm.bio}
                                     onChange={e => setEditForm({ ...editForm, bio: e.target.value })}
                                     placeholder="Share your mentoring approach, background, and what students will learn..."
@@ -1038,6 +1041,42 @@ export default function UserProfile() {
                                         width: "100%", background: "#121212", border: "1px solid #333333",
                                         borderRadius: 10, padding: "10px 12px", color: "#f1f1f1", fontSize: 13,
                                         outline: "none", boxSizing: "border-box", fontFamily: "Roboto, Inter, sans-serif"
+                                    }}
+                                />
+                            </div>
+
+                            {/* Repository / GitHub Link */}
+                            <div style={{ marginBottom: 14 }}>
+                                <label style={{ display: "block", fontSize: 11, color: "#888", fontWeight: 600, textTransform: "uppercase", marginBottom: 6 }}>
+                                    Repository / GitHub URL
+                                </label>
+                                <input
+                                    type="url"
+                                    value={editForm.repositoryUrl}
+                                    onChange={e => setEditForm({ ...editForm, repositoryUrl: e.target.value })}
+                                    placeholder="https://github.com/yourusername"
+                                    style={{
+                                        width: "100%", background: "#121212", border: "1px solid #333333",
+                                        borderRadius: 10, padding: "10px 12px", color: "#f1f1f1", fontSize: 13,
+                                        outline: "none", boxSizing: "border-box"
+                                    }}
+                                />
+                            </div>
+
+                            {/* Portfolio Link */}
+                            <div style={{ marginBottom: 20 }}>
+                                <label style={{ display: "block", fontSize: 11, color: "#888", fontWeight: 600, textTransform: "uppercase", marginBottom: 6 }}>
+                                    Portfolio Website URL
+                                </label>
+                                <input
+                                    type="url"
+                                    value={editForm.portfolioUrl}
+                                    onChange={e => setEditForm({ ...editForm, portfolioUrl: e.target.value })}
+                                    placeholder="https://yourportfolio.com"
+                                    style={{
+                                        width: "100%", background: "#121212", border: "1px solid #333333",
+                                        borderRadius: 10, padding: "10px 12px", color: "#f1f1f1", fontSize: 13,
+                                        outline: "none", boxSizing: "border-box"
                                     }}
                                 />
                             </div>

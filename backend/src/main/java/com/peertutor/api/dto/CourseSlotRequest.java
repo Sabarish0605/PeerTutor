@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 
 @Data
 public class CourseSlotRequest {
-    private LocalDateTime slotDateTime;
+    private LocalDateTime startTime;
+    private LocalDateTime endTime;
     private Integer maxSeats;
 }

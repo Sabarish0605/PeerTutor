@@ -49,6 +49,12 @@ public class AuthService {
                 .name(user.getName())
                 .email(user.getEmail())
                 .role(user.getRole())
+                .profileImage(user.getProfileImage())
+                .avatarUrl(user.getProfileImage())
+                .bio(user.getBio())
+                .fieldOfStudy(user.getFieldOfStudy())
+                .portfolioUrl(user.getPortfolioUrl())
+                .repositoryUrl(user.getRepositoryUrl())
                 .build();
     }
 
@@ -74,6 +80,12 @@ public class AuthService {
                 .name(user.getName())
                 .email(user.getEmail())
                 .role(user.getRole())
+                .profileImage(user.getProfileImage())
+                .avatarUrl(user.getProfileImage())
+                .bio(user.getBio())
+                .fieldOfStudy(user.getFieldOfStudy())
+                .portfolioUrl(user.getPortfolioUrl())
+                .repositoryUrl(user.getRepositoryUrl())
                 .build();
     }
 }

@@ -8,7 +8,9 @@ import java.time.LocalDateTime;
 @Builder
 public class CourseSlotResponse {
     private Long id;
-    private LocalDateTime slotDateTime;
+    private LocalDateTime startTime;
+    private LocalDateTime endTime;
     private Integer maxSeats;
     private Integer currentEnrolled;
+    private String sessionStatus;
 }

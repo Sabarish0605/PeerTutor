@@ -22,7 +22,7 @@ export default function TutorDashboard() {
     const [profileData, setProfileData] = useState(null);
     const [myCourses, setMyCourses] = useState([]);
     const [isCreating, setIsCreating] = useState(false);
-    const [slots, setSlots] = useState([{ date: '', time: '' }]);
+    const [slots, setSlots] = useState([{ date: '', startTime: '', endTime: '' }]);
 
     const [selectedCourseRoster, setSelectedCourseRoster] = useState(null);
     const [rosterData, setRosterData] = useState([]);
@@ -77,14 +77,22 @@ export default function TutorDashboard() {
         e.preventDefault();
         try {
             const formattedSlots = slots
-                .filter(s => s.date && s.time)
+                .filter(s => s.date && s.startTime && s.endTime)
                 .map(s => ({
-                    slotDateTime: `${s.date}T${s.time}:00`,
+                    startTime: `${s.date}T${s.startTime}:00`,
+                    endTime: `${s.date}T${s.endTime}:00`,
                     maxSeats: parseInt(formData.maxPeers)
                 }));
-                
+
             if (formattedSlots.length === 0) {
-                toast.error('Please add at least one valid slot.');
+                toast.error('Please add at least one valid slot with start and end times.');
+                return;
+            }
+
+            // Validate end > start
+            const invalid = formattedSlots.find(s => new Date(s.endTime) <= new Date(s.startTime));
+            if (invalid) {
+                toast.error('End time must be after start time for each slot.');
                 return;
             }
 
@@ -93,10 +101,32 @@ export default function TutorDashboard() {
             setMyCourses([...myCourses, res.data]);
             setIsCreating(false);
             setFormData({ title: '', description: '', price: '', maxPeers: 5, thumbnailUrl: '', demoVideoUrl: '', meetLink: '', categoryName: '' });
-            setSlots([{ date: '', time: '' }]);
+            setSlots([{ date: '', startTime: '', endTime: '' }]);
             toast.success("Course published successfully!");
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to publish course.');
+        }
+    };
+
+    // Session lifecycle controls
+    const handleStartSession = async (slotId) => {
+        try {
+            await api.put(`/slots/${slotId}/start`);
+            toast.success('Session is now LIVE!');
+            fetchStudioData();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Cannot start session yet.');
+        }
+    };
+
+    const handleCloseSession = async (slotId) => {
+        if (!window.confirm('Close this session? Students will be able to leave reviews.')) return;
+        try {
+            await api.put(`/slots/${slotId}/close`);
+            toast.success('Session closed. Reviews unlocked for enrolled students.');
+            fetchStudioData();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to close session.');
         }
     };
 
@@ -482,9 +512,21 @@ export default function TutorDashboard() {
                                     {/* Schedule Blocks */}
                                     <div>
                                         <label style={{ display: 'block', fontSize: 12, color: '#aaaaaa', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Class Time Blocks</label>
-                                        <div style={{ background: '#141414', border: '1px solid #272727', borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        <div style={{ background: '#141414', border: '1px solid #272727', borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
                                             {slots.map((slot, index) => (
-                                                <div key={index} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                                <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: 6, background: '#1a1a1a', borderRadius: 8, padding: 10, border: '1px solid #2e2e2e' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                        <span style={{ fontSize: 11, color: '#666', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Slot {index + 1}</span>
+                                                        {slots.length > 1 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setSlots(slots.filter((_, i) => i !== index))}
+                                                                style={{ background: 'transparent', border: 'none', color: '#ff5555', cursor: 'pointer', padding: 2 }}
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                     <input
                                                         type="date"
                                                         required
@@ -495,38 +537,54 @@ export default function TutorDashboard() {
                                                             setSlots(newSlots);
                                                         }}
                                                         style={{
-                                                            flex: 1, background: '#1c1c1c', border: '1px solid #333',
+                                                            width: '100%', background: '#1c1c1c', border: '1px solid #333',
                                                             borderRadius: 6, padding: '8px 10px', color: '#f1f1f1', fontSize: 12,
+                                                            boxSizing: 'border-box',
                                                         }}
                                                     />
-                                                    <input
-                                                        type="time"
-                                                        required
-                                                        value={slot.time}
-                                                        onChange={e => {
-                                                            const newSlots = [...slots];
-                                                            newSlots[index].time = e.target.value;
-                                                            setSlots(newSlots);
-                                                        }}
-                                                        style={{
-                                                            flex: 1, background: '#1c1c1c', border: '1px solid #333',
-                                                            borderRadius: 6, padding: '8px 10px', color: '#f1f1f1', fontSize: 12,
-                                                        }}
-                                                    />
-                                                    {slots.length > 1 && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setSlots(slots.filter((_, i) => i !== index))}
-                                                            style={{ background: 'transparent', border: 'none', color: '#ff5555', cursor: 'pointer', padding: 4 }}
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </button>
-                                                    )}
+                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                                                        <div>
+                                                            <label style={{ fontSize: 10, color: '#888', display: 'block', marginBottom: 3 }}>Start Time</label>
+                                                            <input
+                                                                type="time"
+                                                                required
+                                                                value={slot.startTime}
+                                                                onChange={e => {
+                                                                    const newSlots = [...slots];
+                                                                    newSlots[index].startTime = e.target.value;
+                                                                    setSlots(newSlots);
+                                                                }}
+                                                                style={{
+                                                                    width: '100%', background: '#1c1c1c', border: '1px solid #333',
+                                                                    borderRadius: 6, padding: '8px 10px', color: '#f1f1f1', fontSize: 12,
+                                                                    boxSizing: 'border-box',
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label style={{ fontSize: 10, color: '#888', display: 'block', marginBottom: 3 }}>End Time</label>
+                                                            <input
+                                                                type="time"
+                                                                required
+                                                                value={slot.endTime}
+                                                                onChange={e => {
+                                                                    const newSlots = [...slots];
+                                                                    newSlots[index].endTime = e.target.value;
+                                                                    setSlots(newSlots);
+                                                                }}
+                                                                style={{
+                                                                    width: '100%', background: '#1c1c1c', border: '1px solid #333',
+                                                                    borderRadius: 6, padding: '8px 10px', color: '#f1f1f1', fontSize: 12,
+                                                                    boxSizing: 'border-box',
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             ))}
                                             <button
                                                 type="button"
-                                                onClick={() => setSlots([...slots, { date: '', time: '' }])}
+                                                onClick={() => setSlots([...slots, { date: '', startTime: '', endTime: '' }])}
                                                 style={{
                                                     background: '#222', border: '1px dashed #444', borderRadius: 6,
                                                     padding: '6px 12px', color: '#aaa', fontSize: 12, cursor: 'pointer',
@@ -538,6 +596,7 @@ export default function TutorDashboard() {
                                             </button>
                                         </div>
                                     </div>
+
 
                                     {/* Thumbnail Upload */}
                                     <div>
@@ -738,27 +797,81 @@ export default function TutorDashboard() {
                                                     {course.title}
                                                 </h3>
 
-                                                {/* Slots summary */}
+                                                {/* Slots summary with session controls */}
                                                 <div style={{ background: '#141414', borderRadius: 8, padding: 10, border: '1px solid #252525' }}>
                                                     <span style={{ fontSize: 10, color: '#888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>
-                                                        Scheduled Sessions ({course.slots?.length || 0})
+                                                        Sessions ({course.slots?.length || 0})
                                                     </span>
                                                     {course.slots && course.slots.length > 0 ? (
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 90, overflowY: 'auto' }}>
-                                                            {course.slots.map(slot => (
-                                                                <div key={slot.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: '#ccc' }}>
-                                                                    <span>{new Date(slot.slotDateTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                                                                    <span style={{
-                                                                        color: slot.currentEnrolled >= slot.maxSeats ? '#ff5555' : '#4ade80',
-                                                                        fontWeight: 600,
-                                                                    }}>
-                                                                        {slot.currentEnrolled}/{slot.maxSeats} enrolled
-                                                                    </span>
-                                                                </div>
-                                                            ))}
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 200, overflowY: 'auto' }}>
+                                                            {course.slots.map(slot => {
+                                                                const start = slot.startTime ? new Date(slot.startTime) : null;
+                                                                const end = slot.endTime ? new Date(slot.endTime) : null;
+                                                                const now = new Date();
+                                                                const canStart = slot.sessionStatus === 'SCHEDULED' && start && (start - now) <= 15 * 60 * 1000;
+                                                                const statusColors = {
+                                                                    SCHEDULED: { bg: 'rgba(250,204,21,0.15)', color: '#facc15' },
+                                                                    LIVE:      { bg: 'rgba(74,222,128,0.15)', color: '#4ade80' },
+                                                                    CLOSED:    { bg: 'rgba(148,163,184,0.15)', color: '#94a3b8' },
+                                                                    EXPIRED:   { bg: 'rgba(239,68,68,0.1)',   color: '#888' },
+                                                                };
+                                                                const sc = statusColors[slot.sessionStatus] || statusColors.SCHEDULED;
+                                                                return (
+                                                                    <div key={slot.id} style={{ background: '#1a1a1a', borderRadius: 6, padding: 8, border: '1px solid #2a2a2a' }}>
+                                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                                                                            <span style={{ fontSize: 11, color: '#ccc' }}>
+                                                                                {start ? start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '?'}
+                                                                                {' '}
+                                                                                {start ? start.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : ''}
+                                                                                {end ? ` – ${end.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}` : ''}
+                                                                            </span>
+                                                                            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: sc.bg, color: sc.color }}>
+                                                                                {slot.sessionStatus}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                            <span style={{ fontSize: 11, color: slot.currentEnrolled >= slot.maxSeats ? '#ff5555' : '#4ade80', fontWeight: 600 }}>
+                                                                                {slot.currentEnrolled}/{slot.maxSeats} enrolled
+                                                                            </span>
+                                                                            <div style={{ display: 'flex', gap: 6 }}>
+                                                                                {slot.sessionStatus === 'SCHEDULED' && (
+                                                                                    <button
+                                                                                        onClick={() => handleStartSession(slot.id)}
+                                                                                        disabled={!canStart}
+                                                                                        title={canStart ? 'Start session now' : 'Available 15 min before start'}
+                                                                                        style={{
+                                                                                            fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 6, border: 'none',
+                                                                                            cursor: canStart ? 'pointer' : 'not-allowed',
+                                                                                            background: canStart ? 'rgba(74,222,128,0.2)' : '#1c1c1c',
+                                                                                            color: canStart ? '#4ade80' : '#555',
+                                                                                            transition: 'all 0.15s',
+                                                                                        }}
+                                                                                    >
+                                                                                        ▶ Start
+                                                                                    </button>
+                                                                                )}
+                                                                                {slot.sessionStatus === 'LIVE' && (
+                                                                                    <button
+                                                                                        onClick={() => handleCloseSession(slot.id)}
+                                                                                        style={{
+                                                                                            fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 6, border: 'none',
+                                                                                            cursor: 'pointer',
+                                                                                            background: 'rgba(239,68,68,0.2)', color: '#ef4444',
+                                                                                            animation: 'pulse 1.5s infinite',
+                                                                                        }}
+                                                                                    >
+                                                                                        ■ Close
+                                                                                    </button>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
                                                         </div>
                                                     ) : (
-                                                        <span style={{ fontSize: 11, color: '#666', fontStyle: 'italic' }}>No scheduled slots</span>
+                                                        <span style={{ fontSize: 11, color: '#666', fontStyle: 'italic' }}>No scheduled slots
+</span>
                                                     )}
                                                 </div>
                                             </div>

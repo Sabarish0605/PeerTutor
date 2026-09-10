@@ -26,8 +26,11 @@ public class CourseSlot {
     @JsonIgnore
     private Course course;
 
-    @Column(name = "slot_date_time", nullable = false)
-    private LocalDateTime slotDateTime;
+    @Column(name = "start_time", nullable = false)
+    private LocalDateTime startTime;
+
+    @Column(name = "end_time", nullable = false)
+    private LocalDateTime endTime;
 
     @Column(name = "max_seats", nullable = false)
     private Integer maxSeats;
@@ -35,4 +38,8 @@ public class CourseSlot {
     @Column(name = "current_enrolled", nullable = false)
     @Builder.Default
     private Integer currentEnrolled = 0;
+
+    @Column(name = "session_status", nullable = false)
+    @Builder.Default
+    private String sessionStatus = "SCHEDULED";
 }

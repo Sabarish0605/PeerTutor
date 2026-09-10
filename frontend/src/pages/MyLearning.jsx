@@ -178,7 +178,17 @@ export default function MyLearning() {
             const fetchBookings = async () => {
                 try {
                     const res = await api.get(`/bookings/student/${user.id}`);
-                    setBookings(Array.isArray(res.data) ? res.data : []);
+                    const data = Array.isArray(res.data) ? res.data : [];
+                    setBookings(data);
+
+                    // Auto-prompt review for first CLOSED slot that hasn't been reviewed yet
+                    const closedUnreviewed = data.find(b =>
+                        b.slot?.sessionStatus === 'CLOSED' && !b.reviewed
+                    );
+                    if (closedUnreviewed) {
+                        setSelectedBooking(closedUnreviewed);
+                        setReviewModalOpen(true);
+                    }
                 } catch (error) {
                     console.error("Failed to load learning dashboard", error);
                 } finally {
@@ -189,6 +199,7 @@ export default function MyLearning() {
             fetchBookings();
         }
     }, [user]);
+
 
     const handleSubmitReview = async (e) => {
         e.preventDefault();
@@ -473,7 +484,18 @@ export default function MyLearning() {
 function LearningCourseItem({ booking, onOpenReview }) {
     const [hovered, setHovered] = useState(false);
     const course = booking.course;
-    const dateObj = booking.slot?.slotDateTime ? new Date(booking.slot.slotDateTime) : null;
+    const slot = booking.slot;
+    const sessionStatus = slot?.sessionStatus || 'SCHEDULED';
+    const dateObj = slot?.startTime ? new Date(slot.startTime) : null;
+    const endObj = slot?.endTime ? new Date(slot.endTime) : null;
+
+    const statusConfig = {
+        SCHEDULED: { label: 'Starting Soon', color: '#facc15', bg: 'rgba(250,204,21,0.12)', dot: '#facc15' },
+        LIVE:      { label: 'Live Now',       color: '#4ade80', bg: 'rgba(74,222,128,0.12)', dot: '#4ade80' },
+        CLOSED:    { label: 'Session Ended',  color: '#94a3b8', bg: 'rgba(148,163,184,0.1)', dot: '#94a3b8' },
+        EXPIRED:   { label: 'Expired',        color: '#555',    bg: 'rgba(255,255,255,0.04)', dot: '#555' },
+    };
+    const sc = statusConfig[sessionStatus] || statusConfig.SCHEDULED;
 
     return (
         <div
@@ -490,7 +512,7 @@ function LearningCourseItem({ booking, onOpenReview }) {
                 transform: hovered ? 'translateY(-2px)' : 'none',
             }}
         >
-            {/* 16:9 Thumbnail Block (Identical to Home page) */}
+            {/* 16:9 Thumbnail Block */}
             <div style={{
                 position: 'relative',
                 width: '100%',
@@ -524,17 +546,20 @@ function LearningCourseItem({ booking, onOpenReview }) {
                     </div>
                 )}
 
-                {/* Status badge (top-right) */}
+                {/* Session status badge (top-right) */}
                 <div style={{
                     position: 'absolute', top: 8, right: 8,
                     background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)',
-                    border: '1px solid rgba(74,222,128,0.3)',
+                    border: `1px solid ${sc.dot}44`,
                     borderRadius: 20, padding: '2px 8px',
                     display: 'flex', alignItems: 'center', gap: 5,
                 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ade80' }} />
-                    <span style={{ fontSize: 10, fontWeight: 700, color: '#4ade80', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                        {booking.status || 'Active'}
+                    <span style={{
+                        width: 6, height: 6, borderRadius: '50%', background: sc.dot,
+                        ...(sessionStatus === 'LIVE' ? { animation: 'pulse 1.5s infinite' } : {}),
+                    }} />
+                    <span style={{ fontSize: 10, fontWeight: 700, color: sc.color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {sc.label}
                     </span>
                 </div>
 
@@ -571,7 +596,7 @@ function LearningCourseItem({ booking, onOpenReview }) {
                 )}
             </div>
 
-            {/* Info Row: Avatar + Title + Tutor + Session Time (Exact same as Home page) */}
+            {/* Info Row */}
             <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                 <Link to={`/profile/${course?.tutorId}`} onClick={e => e.stopPropagation()}>
                     <img
@@ -586,7 +611,6 @@ function LearningCourseItem({ booking, onOpenReview }) {
                 </Link>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
-                    {/* Course Title */}
                     <h3 style={{
                         margin: '0 0 4px', fontSize: 14, fontWeight: 600,
                         color: hovered ? '#00C2CB' : '#f1f1f1',
@@ -598,17 +622,18 @@ function LearningCourseItem({ booking, onOpenReview }) {
                         {course?.title || 'Enrolled Course'}
                     </h3>
 
-                    {/* Tutor Name */}
                     <p style={{ margin: '0 0 4px', fontSize: 12, color: '#aaaaaa' }}>
                         {course?.tutorName}
                     </p>
 
-                    {/* Scheduled session time */}
+                    {/* Session time */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             <Clock size={11} color="#00C2CB" />
                             <span style={{ fontSize: 12, color: '#00C2CB', fontWeight: 500 }}>
-                                {dateObj ? dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Session scheduled'}
+                                {dateObj
+                                    ? `${dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} ${dateObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}${endObj ? ` – ${endObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}` : ''}`
+                                    : 'Session scheduled'}
                             </span>
                         </div>
                         <span style={{ fontSize: 12, color: '#888' }}>
@@ -618,67 +643,77 @@ function LearningCourseItem({ booking, onOpenReview }) {
                 </div>
             </div>
 
-            {/* Action Row: Join Class + Feedback (Styled identically to Home page button) */}
+            {/* Action Row — status-aware */}
             <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
-                {course?.meetLink ? (
-                    <button
-                        onClick={() => window.open(course.meetLink, '_blank')}
-                        style={{
-                            flex: 1,
-                            padding: '8px 0',
-                            borderRadius: 8,
-                            border: 'none',
-                            cursor: 'pointer',
-                            background: hovered ? '#00C2CB' : '#272727',
-                            color: hovered ? '#0f0f0f' : '#f1f1f1',
-                            fontSize: 13, fontWeight: 600,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                            transition: 'background 0.15s ease, color 0.15s ease',
-                        }}
-                    >
-                        <Video size={14} />
-                        <span>Join Class</span>
-                    </button>
-                ) : (
+                {/* Meet Link Button — only shown for SCHEDULED and LIVE */}
+                {sessionStatus === 'SCHEDULED' && (
                     <button
                         disabled
                         style={{
-                            flex: 1,
-                            padding: '8px 0',
-                            borderRadius: 8,
-                            border: 'none',
-                            cursor: 'not-allowed',
-                            background: '#181818',
-                            color: '#666',
+                            flex: 1, padding: '8px 0', borderRadius: 8, border: '1px solid #2a2a2a',
+                            cursor: 'not-allowed', background: '#181818', color: '#facc15',
                             fontSize: 13, fontWeight: 600,
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                         }}
                     >
-                        <span>Link Pending</span>
+                        <Clock size={14} />
+                        <span>Starting Soon</span>
                     </button>
                 )}
 
-                <button
-                    onClick={onOpenReview}
-                    title="Leave Feedback & Rating"
-                    style={{
-                        padding: '8px 14px',
-                        borderRadius: 8,
-                        background: '#272727',
-                        border: '1px solid #333333',
-                        color: '#facc15',
-                        cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                        fontSize: 12, fontWeight: 600,
-                        transition: 'background 0.15s ease',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#383838'}
-                    onMouseLeave={e => e.currentTarget.style.background = '#272727'}
-                >
-                    <Star size={14} fill="#facc15" />
-                    <span>Review</span>
-                </button>
+                {sessionStatus === 'LIVE' && course?.meetLink && (
+                    <button
+                        onClick={() => window.open(course.meetLink, '_blank')}
+                        style={{
+                            flex: 1, padding: '8px 0', borderRadius: 8, border: 'none',
+                            cursor: 'pointer',
+                            background: 'linear-gradient(135deg, #00C2CB, #00a8af)',
+                            color: '#0f0f0f', fontSize: 13, fontWeight: 700,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                            boxShadow: '0 0 16px rgba(0,194,203,0.35)',
+                            animation: 'pulse 2s infinite',
+                        }}
+                    >
+                        <Video size={14} />
+                        <span>Join Meet</span>
+                    </button>
+                )}
+
+                {/* CLOSED/EXPIRED: meet link hidden, review button shown for CLOSED only */}
+                {(sessionStatus === 'CLOSED' || sessionStatus === 'EXPIRED') && (
+                    <div style={{
+                        flex: 1, padding: '8px 0', borderRadius: 8,
+                        background: '#141414', border: '1px solid #2a2a2a',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 12, color: '#555', fontWeight: 500,
+                    }}>
+                        Session {sessionStatus === 'CLOSED' ? 'Closed' : 'Expired'}
+                    </div>
+                )}
+
+                {/* Review button — ONLY for CLOSED slots */}
+                {sessionStatus === 'CLOSED' && (
+                    <button
+                        onClick={onOpenReview}
+                        title="Leave Feedback & Rating"
+                        style={{
+                            padding: '8px 14px', borderRadius: 8,
+                            background: '#272727', border: '1px solid #333333',
+                            color: '#facc15', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                            fontSize: 12, fontWeight: 600,
+                            transition: 'background 0.15s ease',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#383838'}
+                        onMouseLeave={e => e.currentTarget.style.background = '#272727'}
+                    >
+                        <Star size={14} fill="#facc15" />
+                        <span>Review</span>
+                    </button>
+                )}
             </div>
         </div>
     );
 }
+
+

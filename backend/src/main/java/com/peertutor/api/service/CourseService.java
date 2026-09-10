@@ -47,12 +47,7 @@ public class CourseService {
 
         if (request.getSlots() != null) {
             List<CourseSlot> slots = request.getSlots().stream()
-                    .map(slotReq -> CourseSlot.builder()
-                            .course(course)
-                            .slotDateTime(slotReq.getSlotDateTime())
-                            .maxSeats(slotReq.getMaxSeats() != null ? slotReq.getMaxSeats() : 1)
-                            .currentEnrolled(0)
-                            .build())
+                    .map(slotReq -> buildSlot(course, slotReq))
                     .collect(Collectors.toList());
             course.setSlots(slots);
         }
@@ -67,7 +62,7 @@ public class CourseService {
                 .collect(Collectors.toList());
     }
 
-    // NEW: Fetch all courses for the public Marketplace Discover page
+    // Fetch all courses for the public Marketplace Discover page
     public List<CourseResponse> getAllCourses() {
         return courseRepository.findAll().stream()
                 .map(this::mapToResponse)
@@ -90,7 +85,7 @@ public class CourseService {
 
         if (!course.getAuthor().getId().equals(userId)) {
             throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.FORBIDDEN, 
+                    org.springframework.http.HttpStatus.FORBIDDEN,
                     "Unauthorized: You do not own this course"
             );
         }
@@ -115,12 +110,7 @@ public class CourseService {
                 course.setSlots(new java.util.ArrayList<>());
             }
             List<CourseSlot> slots = request.getSlots().stream()
-                    .map(slotReq -> CourseSlot.builder()
-                            .course(course)
-                            .slotDateTime(slotReq.getSlotDateTime())
-                            .maxSeats(slotReq.getMaxSeats() != null ? slotReq.getMaxSeats() : 1)
-                            .currentEnrolled(0)
-                            .build())
+                    .map(slotReq -> buildSlot(course, slotReq))
                     .collect(Collectors.toList());
             course.getSlots().addAll(slots);
         }
@@ -135,12 +125,25 @@ public class CourseService {
 
         if (!course.getAuthor().getId().equals(userId)) {
             throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.FORBIDDEN, 
+                    org.springframework.http.HttpStatus.FORBIDDEN,
                     "Unauthorized: You do not own this course"
             );
         }
 
         courseRepository.delete(course);
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    private CourseSlot buildSlot(Course course, CourseSlotRequest slotReq) {
+        return CourseSlot.builder()
+                .course(course)
+                .startTime(slotReq.getStartTime())
+                .endTime(slotReq.getEndTime())
+                .maxSeats(slotReq.getMaxSeats() != null ? slotReq.getMaxSeats() : 1)
+                .currentEnrolled(0)
+                .sessionStatus("SCHEDULED")
+                .build();
     }
 
     private CourseResponse mapToResponse(Course course) {
@@ -153,9 +156,11 @@ public class CourseService {
                 .slots(course.getSlots() != null ? course.getSlots().stream()
                         .map(slot -> CourseSlotResponse.builder()
                                 .id(slot.getId())
-                                .slotDateTime(slot.getSlotDateTime())
+                                .startTime(slot.getStartTime())
+                                .endTime(slot.getEndTime())
                                 .maxSeats(slot.getMaxSeats())
                                 .currentEnrolled(slot.getCurrentEnrolled())
+                                .sessionStatus(slot.getSessionStatus())
                                 .build())
                         .collect(Collectors.toList()) : new java.util.ArrayList<>())
                 .thumbnailUrl(course.getThumbnailUrl())

@@ -12,11 +12,13 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        Path uploadDir = Paths.get("uploads");
-        String uploadPath = uploadDir.toFile().getAbsolutePath();
-        
-        // This maps requests to /uploads/** to the physical directory
+        // Use the same absolute path as FileUploadController
+        String uploadDir = System.getProperty("user.home") + "/peertutor/uploads/";
+        Path uploadPath = Paths.get(uploadDir).toAbsolutePath();
+        String resourceLocation = "file:" + uploadPath.toString().replace("\\", "/") + "/";
+
         registry.addResourceHandler("/uploads/**")
-                .addResourceLocations("file:" + uploadPath + "/");
+                .addResourceLocations(resourceLocation);
     }
 }
+

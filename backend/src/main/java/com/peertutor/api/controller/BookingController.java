@@ -1,6 +1,7 @@
 package com.peertutor.api.controller;
 
 import com.peertutor.api.entity.Booking;
+import com.peertutor.api.repository.ReviewRepository;
 import com.peertutor.api.service.BookingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,7 @@ import java.util.stream.Collectors;
 public class BookingController {
 
     private final BookingService bookingService;
+    private final ReviewRepository reviewRepository;
 
     @PostMapping("/student/{studentId}/course/{courseId}/slot/{slotId}")
     public ResponseEntity<?> createBooking(
@@ -42,13 +44,21 @@ public class BookingController {
             map.put("status", booking.getStatus());
             map.put("bookingDate", booking.getBookingDate());
 
+            // Indicate whether this booking has already been reviewed so the
+            // frontend review modal is not re-triggered on every page load.
+            map.put("reviewed", reviewRepository.existsByBookingId(booking.getId()));
+
             if (booking.getSlot() != null) {
                 Map<String, Object> slotMap = new HashMap<>();
                 slotMap.put("id", booking.getSlot().getId());
-                slotMap.put("slotDateTime", booking.getSlot().getSlotDateTime());
+                slotMap.put("startTime", booking.getSlot().getStartTime());
+                slotMap.put("endTime", booking.getSlot().getEndTime());
+                slotMap.put("sessionStatus", booking.getSlot().getSessionStatus());
+                slotMap.put("maxSeats", booking.getSlot().getMaxSeats());
+                slotMap.put("currentEnrolled", booking.getSlot().getCurrentEnrolled());
                 map.put("slot", slotMap);
             }
-            
+
             if (booking.getCourse() != null) {
                 Map<String, Object> courseMap = new HashMap<>();
                 courseMap.put("id", booking.getCourse().getId());
@@ -56,6 +66,8 @@ public class BookingController {
                 courseMap.put("thumbnailUrl", booking.getCourse().getThumbnailUrl());
                 courseMap.put("demoVideoUrl", booking.getCourse().getDemoVideoUrl());
                 courseMap.put("meetLink", booking.getCourse().getMeetLink());
+                courseMap.put("categoryName", booking.getCourse().getCategoryName());
+                courseMap.put("price", booking.getCourse().getPrice());
                 if (booking.getCourse().getAuthor() != null) {
                     courseMap.put("tutorId", booking.getCourse().getAuthor().getId());
                     courseMap.put("tutorName", booking.getCourse().getAuthor().getName());

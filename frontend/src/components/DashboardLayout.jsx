@@ -244,7 +244,7 @@ export default function DashboardLayout() {
                     <div className="relative" ref={profileMenuRef}>
                         <button
                             onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                            className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden transition-all focus:outline-none cursor-pointer"
+                            className="w-9 h-9 rounded-xl flex items-center justify-center overflow-hidden transition-all focus:outline-none cursor-pointer"
                             style={{
                                 border: '1.5px solid #3f3f3f',
                                 background: '#272727',
@@ -252,8 +252,8 @@ export default function DashboardLayout() {
                             }}
                             title="Account"
                         >
-                            {user?.profileImage ? (
-                                <img alt={user?.name || "Profile"} className="w-full h-full object-cover" src={user.profileImage} />
+                            {user?.profileImage || user?.avatarUrl ? (
+                                <img alt={user?.name || "Profile"} className="w-full h-full object-cover" src={user.profileImage || user.avatarUrl} />
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center text-xs font-bold" style={{ background: '#2e7d32', color: '#ffffff' }}>
                                     {getInitials(user?.name)}
@@ -278,7 +278,7 @@ export default function DashboardLayout() {
                                     style={{ background: '#2d2f31' }}
                                 >
                                     <div
-                                        className="w-16 h-16 rounded-full flex items-center justify-center overflow-hidden mb-3"
+                                        className="w-16 h-16 rounded-2xl flex items-center justify-center overflow-hidden mb-3"
                                         style={{
                                             background: '#2e7d32',
                                             color: '#ffffff',
@@ -287,8 +287,8 @@ export default function DashboardLayout() {
                                             boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                                         }}
                                     >
-                                        {user?.profileImage ? (
-                                            <img alt={user.name} className="w-full h-full object-cover" src={user.profileImage} />
+                                        {user?.profileImage || user?.avatarUrl ? (
+                                            <img alt={user.name} className="w-full h-full object-cover" src={user.profileImage || user.avatarUrl} />
                                         ) : (
                                             getInitials(user?.name)
                                         )}

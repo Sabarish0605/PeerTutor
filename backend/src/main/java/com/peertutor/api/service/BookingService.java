@@ -6,8 +6,6 @@ import com.peertutor.api.entity.CourseSlot;
 import com.peertutor.api.entity.User;
 import com.peertutor.api.repository.BookingRepository;
 import com.peertutor.api.repository.CourseRepository;
-import com.peertutor.api.repository.BookingRepository;
-import com.peertutor.api.repository.CourseRepository;
 import com.peertutor.api.repository.CourseSlotRepository;
 import com.peertutor.api.repository.UserRepository;
 import lombok.RequiredArgsConstructor;

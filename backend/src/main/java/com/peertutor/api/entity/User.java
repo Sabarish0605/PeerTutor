@@ -43,6 +43,10 @@ public class User implements UserDetails {
 
     private String fieldOfStudy;
 
+    private String portfolioUrl;
+
+    private String repositoryUrl;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;

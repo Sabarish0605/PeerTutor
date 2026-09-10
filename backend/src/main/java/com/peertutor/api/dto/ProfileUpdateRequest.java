@@ -14,4 +14,6 @@ public class ProfileUpdateRequest {
     private String fieldOfStudy;
     private String bio;
     private String avatarUrl;
+    private String portfolioUrl;
+    private String repositoryUrl;
 }

@@ -10,4 +10,7 @@ import java.util.List;
 public interface ReviewRepository extends JpaRepository<Review, Long> {
     // NEW PATH: Finds reviews by looking at Booking -> Course -> Author -> Id
     List<Review> findByBookingCourseAuthorId(Long authorId);
+
+    // Checks if a specific booking already has a review (used to set `reviewed` flag in booking API response)
+    boolean existsByBookingId(Long bookingId);
 }
