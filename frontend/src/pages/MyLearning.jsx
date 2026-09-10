@@ -71,67 +71,80 @@ export default function MyLearning() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-                    {bookings.map((booking) => (
-                        <div key={booking.id} className="bg-white border border-gray-200 hover:border-gray-300 rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group">
-                            <div>
-                                <div className="relative w-full aspect-video bg-gray-100 overflow-hidden border-b border-gray-200">
+                    {bookings.map((booking, idx) => {
+                        const bgColors = ['bg-indigo-50', 'bg-blue-50', 'bg-purple-50', 'bg-pink-50'];
+                        const cardBg = bgColors[idx % bgColors.length];
+                        
+                        return (
+                        <div key={booking.id} className={`${cardBg} rounded-[32px] p-3 transition-all hover:-translate-y-1 hover:shadow-md group flex flex-col`}>
+                            <div className="bg-white rounded-2xl p-4 shadow-sm flex flex-col h-full border border-slate-100">
+                                {/* Image */}
+                                <div className="relative w-full aspect-video bg-slate-100 rounded-xl overflow-hidden mb-4">
                                     {booking.course?.thumbnailUrl ? (
                                         <img src={booking.course.thumbnailUrl} alt={booking.course?.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                     ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-semibold tracking-wider uppercase bg-gray-50">No Preview</div>
+                                        <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs font-medium tracking-wider uppercase bg-slate-50">No Preview</div>
                                     )}
-                                    
-                                    <Link to={`/profile/${booking.course?.tutorId}`} className="absolute bottom-3 left-3 flex items-center gap-2 bg-white/95 border border-gray-200 hover:border-blue-300 backdrop-blur-sm px-2.5 py-1.5 rounded-md shadow-sm transition-all z-10 cursor-pointer">
-                                        <img src={booking.course?.authorAvatar || `https://ui-avatars.com/api/?name=${booking.course?.tutorName || 'Unknown'}&background=EBF5FF&color=1E3A8A`} className="w-6 h-6 rounded-full object-cover ring-2 ring-white" />
-                                        <span className="text-xs text-gray-700 font-medium hover:text-blue-600">{booking.course?.tutorName}</span>
-                                    </Link>
-
-                                    <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-white/95 border border-gray-200 backdrop-blur-sm px-2.5 py-1 rounded-md shadow-sm">
+                                    <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-white/95 border border-slate-200 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-sm">
                                         <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                                        <span className="text-[11px] text-gray-700 font-semibold uppercase">{booking.status}</span>
+                                        <span className="text-[11px] text-slate-700 font-semibold uppercase">{booking.status}</span>
                                     </div>
                                 </div>
 
-                                <div className="p-5 flex flex-col gap-3">
-                                    <h3 className="text-lg text-gray-900 font-bold mb-1 group-hover:text-blue-600 transition-colors line-clamp-2 leading-tight">
+                                {/* Content */}
+                                <div className="flex flex-col flex-grow">
+                                    <h3 className="text-lg text-slate-800 font-bold mb-2 group-hover:text-primary transition-colors line-clamp-2 leading-tight">
                                         {booking.course?.title}
                                     </h3>
-                                    <p className="text-[11px] text-gray-500 uppercase font-semibold">
+                                    <p className="text-[11px] text-slate-500 uppercase font-semibold mb-2">
                                         Enrolled: {new Date(booking.bookingDate).toLocaleDateString()}
                                     </p>
 
-                                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mt-2">
-                                        <p className="text-[11px] text-gray-500 mb-1 font-semibold">SCHEDULED SESSION:</p>
-                                        <p className="text-sm text-blue-700 font-bold">
+                                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 mt-auto mb-4">
+                                        <p className="text-[11px] text-slate-500 mb-1 font-semibold uppercase tracking-wider">Scheduled Session:</p>
+                                        <p className="text-sm text-secondary font-bold">
                                             {booking.slot ? new Date(booking.slot.slotDateTime).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'Not Scheduled'}
                                         </p>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div className="p-5 pt-0 flex flex-col gap-3 border-t border-gray-100 pt-4 mt-auto">
-                                <div className="flex gap-2">
-                                    {booking.course?.meetLink ? (
-                                        <button onClick={() => window.open(booking.course.meetLink, '_blank')} className="flex-1 inline-flex justify-center items-center gap-1.5 text-sm text-white font-semibold bg-blue-600 hover:bg-blue-700 py-2.5 rounded-lg shadow-sm transition-all">
-                                            <span className="material-symbols-outlined text-[18px]">videocam</span> Join Class
-                                        </button>
-                                    ) : (
-                                        <button disabled className="flex-1 inline-flex justify-center items-center gap-1.5 text-sm text-gray-500 bg-gray-100 border border-gray-200 py-2.5 rounded-lg cursor-not-allowed font-medium">
-                                            <span className="material-symbols-outlined text-[18px]">hourglass_empty</span> Pending Link
-                                        </button>
-                                    )}
-                                    {booking.course?.demoVideoUrl && (
-                                        <button onClick={() => window.open(booking.course.demoVideoUrl, '_blank')} className="flex-1 inline-flex justify-center items-center gap-1.5 text-sm text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 py-2.5 rounded-lg transition-all font-medium">
-                                            <span className="material-symbols-outlined text-[18px]">play_circle</span> Replay
-                                        </button>
-                                    )}
+                                {/* Footer Row 1: Author */}
+                                <div className="flex items-center justify-between mb-3">
+                                    <Link to={`/profile/${booking.course?.tutorId}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                                        <img src={booking.course?.authorAvatar || `https://ui-avatars.com/api/?name=${booking.course?.tutorName || 'Unknown'}&background=EBF5FF&color=00C2CB`} className="w-8 h-8 rounded-full object-cover ring-2 ring-slate-50" />
+                                        <span className="text-sm text-slate-700 font-semibold">{booking.course?.tutorName}</span>
+                                    </Link>
                                 </div>
-                                <button onClick={() => { setSelectedBooking(booking); setReviewModalOpen(true); }} className="w-full inline-flex justify-center items-center gap-1.5 text-sm text-gray-600 bg-transparent hover:bg-gray-50 border border-gray-300 py-2.5 rounded-lg transition-all mt-1 font-medium">
-                                    <span className="material-symbols-outlined text-[18px]">rate_review</span> Leave a Review
-                                </button>
+
+                                {/* Footer Row 2: Actions */}
+                                <div className="flex flex-col gap-2 border-t border-slate-100 pt-3 mt-auto">
+                                    <div className="flex gap-2">
+                                        {booking.course?.meetLink ? (
+                                            <button onClick={() => window.open(booking.course.meetLink, '_blank')} className="flex-1 inline-flex justify-center items-center gap-1.5 text-sm text-white font-semibold bg-secondary hover:bg-secondary-hover py-2.5 rounded-xl shadow-sm transition-all">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect width="15" height="14" x="1" y="5" rx="2" ry="2"/></svg>
+                                                Join Class
+                                            </button>
+                                        ) : (
+                                            <button disabled className="flex-1 inline-flex justify-center items-center gap-1.5 text-sm text-slate-400 bg-slate-50 border border-slate-200 py-2.5 rounded-xl cursor-not-allowed font-medium">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="M4.93 19.07l2.83-2.83"/><path d="M16.24 7.76l2.83-2.83"/></svg>
+                                                Pending Link
+                                            </button>
+                                        )}
+                                        {booking.course?.demoVideoUrl && (
+                                            <button onClick={() => window.open(booking.course.demoVideoUrl, '_blank')} className="flex-1 inline-flex justify-center items-center gap-1.5 text-sm text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 py-2.5 rounded-xl transition-all font-medium shadow-sm">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+                                                Replay
+                                            </button>
+                                        )}
+                                    </div>
+                                    <button onClick={() => { setSelectedBooking(booking); setReviewModalOpen(true); }} className="w-full inline-flex justify-center items-center gap-1.5 text-sm text-slate-600 hover:text-primary bg-transparent hover:bg-slate-50 border border-slate-200 py-2.5 rounded-xl transition-all font-medium">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                        Leave a Review
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    ))}
+                    )})}
                 </div>
             )}
 

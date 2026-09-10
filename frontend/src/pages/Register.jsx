@@ -2,7 +2,7 @@ import { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api from '../services/api';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Lightbulb } from 'lucide-react';
 
 export default function Register() {
     const [formData, setFormData] = useState({ name: '', email: '', password: '' });
@@ -19,111 +19,121 @@ export default function Register() {
             login(response.data, response.data.token);
             navigate('/discover');
         } catch (err) {
-            setError(err.response?.data?.message || 'Application failed. Please verify your details.');
+            setError(err.response?.data?.message || 'Registration failed. Please try again.');
         }
     };
 
     return (
-        <div className="w-full min-h-screen bg-transparent text-gray-900 flex flex-col md:flex-row-reverse">
-            {/* Left side (Right visually) - Editorial Statement */}
-            <div className="w-full md:w-1/2 p-8 md:p-16 flex flex-col justify-between border-b md:border-b-0 md:border-l border-gray-300">
-                <div className="flex justify-end">
-                    <Link to="/" className="text-gray-600 hover:text-gray-900 transition-colors text-sm uppercase tracking-widest font-semibold flex items-center gap-2">
-                        Return to Index <span>→</span>
+        <div className="w-full min-h-screen flex flex-col md:flex-row bg-white">
+            {/* Left side - Soft Blue with Illustration */}
+            <div className="w-full md:w-1/2 bg-[#E0F7FA] p-8 md:p-16 flex flex-col justify-between">
+                <div>
+                    <Link to="/" className="text-secondary hover:text-secondary-hover transition-colors text-sm font-semibold flex items-center gap-2">
+                        <span>←</span> Back to Home
                     </Link>
                 </div>
                 
-                <div className="my-16 md:my-0">
-                    <h1 className="font-serif text-5xl md:text-7xl leading-tight mb-6">
-                        Enter the <br className="hidden md:block"/>
-                        Exchange.
+                <div className="my-16 md:my-0 flex flex-col items-center justify-center text-center">
+                    <div className="w-64 h-64 bg-white/50 rounded-full flex items-center justify-center mb-10 shadow-sm border border-white/60">
+                        <Lightbulb size={80} className="text-secondary" />
+                    </div>
+                    <h1 className="text-4xl md:text-5xl font-bold text-slate-800 leading-tight mb-4 tracking-tight">
+                        Join PeerTutor
                     </h1>
-                    <p className="text-gray-600 text-lg max-w-md font-serif italic">
-                        "An application to join the PeerTutor network. Whether you are here to instruct or to absorb, your knowledge has value here."
+                    <p className="text-slate-600 text-lg max-w-sm">
+                        Create an account to start learning new skills or sharing your expertise with others.
                     </p>
                 </div>
 
-                <div className="text-gray-500 text-sm border-t border-gray-300 pt-4 text-right">
-                    Registration &bull; Volume I
+                <div className="text-slate-500 text-sm font-medium">
+                    PeerTutor Network &copy; {new Date().getFullYear()}
                 </div>
             </div>
 
-            {/* Right side (Left visually) - Form */}
-            <div className="w-full md:w-1/2 p-8 md:p-16 flex flex-col justify-center bg-transparent">
-                <div className="max-w-md w-full mx-auto bg-gray-100 shadow-lg border border-gray-300 rounded-2xl p-8">
-                    <h2 className="text-3xl font-serif mb-2">New Membership</h2>
-                    <p className="text-gray-600 mb-10 text-sm">Submit your application to enter the ledger.</p>
+            {/* Right side - Clean White Form */}
+            <div className="w-full md:w-1/2 p-8 md:p-16 flex flex-col justify-center bg-white">
+                <div className="max-w-md w-full mx-auto">
+                    <div className="mb-10 text-center md:text-left">
+                        <h2 className="text-3xl font-bold text-slate-900 mb-2 tracking-tight">Create your account</h2>
+                        <p className="text-slate-500">Sign up below to get started.</p>
+                    </div>
 
                     {error && (
-                        <div className="bg-red-50 border border-red-200 text-red-600 rounded p-4 mb-6 text-sm">
+                        <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-4 mb-6 text-sm flex items-center gap-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                             {error}
                         </div>
                     )}
 
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="group">
-                            <label className="block text-xs uppercase tracking-widest text-gray-600 mb-2 transition-colors">
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">
                                 Full Name
                             </label>
                             <input
                                 type="text"
                                 value={formData.name}
                                 onChange={(e) => setFormData({...formData, name: e.target.value})}
-                                className="w-full bg-gray-200 border border-gray-400 text-gray-900 focus:ring-2 focus:ring-gray-500 rounded-lg outline-none px-4 py-3 font-sans placeholder-gray-500"
-                                placeholder="Your given name"
+                                className="w-full bg-slate-50 border border-slate-200 text-slate-900 focus:ring-2 focus:ring-primary focus:border-primary rounded-xl outline-none px-4 py-3 placeholder-slate-400 transition-all"
+                                placeholder="John Doe"
                                 required
                             />
                         </div>
 
-                        <div className="group">
-                            <label className="block text-xs uppercase tracking-widest text-gray-600 mb-2 transition-colors">
-                                Electronic Mail
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                                Email Address
                             </label>
                             <input
                                 type="email"
                                 value={formData.email}
                                 onChange={(e) => setFormData({...formData, email: e.target.value})}
-                                className="w-full bg-gray-200 border border-gray-400 text-gray-900 focus:ring-2 focus:ring-gray-500 rounded-lg outline-none px-4 py-3 font-sans placeholder-gray-500"
-                                placeholder="name@institution.edu"
+                                className="w-full bg-slate-50 border border-slate-200 text-slate-900 focus:ring-2 focus:ring-primary focus:border-primary rounded-xl outline-none px-4 py-3 placeholder-slate-400 transition-all"
+                                placeholder="name@example.com"
                                 required
                             />
                         </div>
 
-                        <div className="group">
-                            <label className="block text-xs uppercase tracking-widest text-gray-600 mb-2 transition-colors">
-                                Security Passphrase
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                                Password
                             </label>
                             <div className="relative">
                                 <input
                                     type={showPassword ? "text" : "password"}
                                     value={formData.password}
                                     onChange={(e) => setFormData({...formData, password: e.target.value})}
-                                    className="w-full bg-gray-200 border border-gray-400 text-gray-900 focus:ring-2 focus:ring-gray-500 rounded-lg outline-none px-4 py-3 font-sans"
+                                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 focus:ring-2 focus:ring-primary focus:border-primary rounded-xl outline-none px-4 py-3 placeholder-slate-400 transition-all"
+                                    placeholder="••••••••"
                                     required
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                                 >
                                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                 </button>
                             </div>
                         </div>
 
-                        <button
-                            type="submit"
-                            className="w-full bg-gray-800 text-white py-4 rounded-xl hover:bg-gray-900 transition-colors font-semibold tracking-wide mt-4"
-                        >
-                            Submit Application
-                        </button>
+                        <div className="pt-2">
+                            <button
+                                type="submit"
+                                className="w-full bg-primary text-white py-3.5 rounded-xl hover:bg-primary-hover transition-colors font-semibold shadow-sm"
+                            >
+                                Sign Up
+                            </button>
+                        </div>
                     </form>
 
-                    <div className="mt-8 text-sm text-gray-600 text-center border-t border-gray-300 pt-6">
-                        Already hold a membership?{' '}
-                        <Link to="/login" className="text-gray-900 font-semibold hover:underline underline-offset-4">
-                            Authenticate.
-                        </Link>
+                    <div className="mt-8 text-center">
+                        <p className="text-slate-600">
+                            Already have an account?{' '}
+                            <Link to="/login" className="text-primary font-semibold hover:underline underline-offset-2">
+                                Log in here
+                            </Link>
+                        </p>
                     </div>
                 </div>
             </div>

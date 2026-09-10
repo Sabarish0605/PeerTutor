@@ -76,45 +76,45 @@ export default function Lanyard({
             <ambientLight intensity={Math.PI} />
             <Physics gravity={gravity} timeStep={isMobile ? 1 / 30 : 1 / 60}>
               <Band
-            isMobile={isMobile}
-            frontImage={frontImage}
-            backImage={backImage}
-            imageFit={imageFit}
-            lanyardImage={lanyardImage}
-            lanyardWidth={lanyardWidth}
-          >
-            {children}
-          </Band>
-        </Physics>
-        <Environment blur={0.75}>
-          <Lightformer
-            intensity={2}
-            color="white"
-            position={[0, -1, 5]}
-            rotation={[0, 0, Math.PI / 3]}
-            scale={[100, 0.1, 1]}
-          />
-          <Lightformer
-            intensity={3}
-            color="white"
-            position={[-1, -1, 1]}
-            rotation={[0, 0, Math.PI / 3]}
-            scale={[100, 0.1, 1]}
-          />
-          <Lightformer
-            intensity={3}
-            color="white"
-            position={[1, 1, 1]}
-            rotation={[0, 0, Math.PI / 3]}
-            scale={[100, 0.1, 1]}
-          />
-          <Lightformer
-            intensity={10}
-            color="white"
-            position={[-10, 0, 14]}
-            rotation={[0, Math.PI / 2, Math.PI / 3]}
-            scale={[100, 10, 1]}
-          </Environment>
+                isMobile={isMobile}
+                frontImage={frontImage}
+                backImage={backImage}
+                imageFit={imageFit}
+                lanyardImage={lanyardImage}
+                lanyardWidth={lanyardWidth}
+              >
+                {children}
+              </Band>
+            </Physics>
+            <Environment blur={0.75}>
+              <Lightformer
+                intensity={2}
+                color="white"
+                position={[0, -1, 5]}
+                rotation={[0, 0, Math.PI / 3]}
+                scale={[100, 0.1, 1]}
+              />
+              <Lightformer
+                intensity={3}
+                color="white"
+                position={[-1, -1, 1]}
+                rotation={[0, 0, Math.PI / 3]}
+                scale={[100, 0.1, 1]}
+              />
+              <Lightformer
+                intensity={3}
+                color="white"
+                position={[1, 1, 1]}
+                rotation={[0, 0, Math.PI / 3]}
+                scale={[100, 0.1, 1]}
+              />
+              <Lightformer
+                intensity={10}
+                color="white"
+                position={[-10, 0, 14]}
+                rotation={[0, Math.PI / 2, Math.PI / 3]}
+                scale={[100, 10, 1]}></Lightformer>
+            </Environment>
           </Suspense>
         </Canvas>
       </div>
@@ -144,11 +144,11 @@ function Band({
     rot = new THREE.Vector3(),
     dir = new THREE.Vector3();
   const segmentProps = { type: 'dynamic', canSleep: true, colliders: false, angularDamping: 4, linearDamping: 4 };
-  
+
   // Need to handle potential loading errors gracefully if card.glb is missing.
   // Assuming it works. The app will throw a suspense error if it's missing during dev.
   const { nodes, materials } = useGLTF(cardGLB);
-  
+
   const texture = useTexture(lanyardImage || lanyard);
   const frontTex = useTexture(frontImage || BLANK_PIXEL);
   const backTex = useTexture(backImage || BLANK_PIXEL);
@@ -166,7 +166,7 @@ function Band({
     canvas.height = H;
     const ctx = canvas.getContext('2d');
     if (!ctx) return baseMap;
-    
+
     ctx.drawImage(baseImg, 0, 0, W, H);
 
     const drawFitted = (img, rect) => {
@@ -285,10 +285,10 @@ function Band({
                   metalness={0.8}
                 />
                 {/* HTML Injection onto the card face */}
-                <Html 
-                  transform 
-                  position={[0, 0.1, 0.015]} 
-                  scale={0.12} 
+                <Html
+                  transform
+                  position={[0, 0.1, 0.015]}
+                  scale={0.12}
                   occlude
                 >
                   <div className="w-[300px] h-[450px] flex flex-col items-center justify-center p-6 select-none bg-transparent">

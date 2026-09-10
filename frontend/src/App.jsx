@@ -12,7 +12,6 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { Toaster } from 'react-hot-toast';
 import TutorOnboarding from './pages/TutorOnboarding';
 import DashboardLayout from './components/DashboardLayout';
-import InteractiveBackground from './components/InteractiveBackground';
 import ProfileSettings from './pages/ProfileSettings';
 import Subscriptions from './pages/Subscriptions';
 
@@ -20,7 +19,7 @@ function App() {
   return (
       <AuthProvider>
         <Router>
-          <InteractiveBackground>
+
               <Toaster position="bottom-right" />
 
               <main className="flex-grow w-full">
@@ -73,7 +72,7 @@ function App() {
                 </Route>
                 </Routes>
               </main>
-          </InteractiveBackground>
+
         </Router>
       </AuthProvider>
   );

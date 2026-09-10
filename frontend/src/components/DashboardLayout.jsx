@@ -70,7 +70,7 @@ export default function DashboardLayout() {
     };
 
     return (
-        <div className="flex min-h-screen font-sans bg-gray-200 bg-[radial-gradient(#6b7280_1.5px,transparent_1.5px)] bg-[size:24px_24px] text-gray-900">
+        <div className="flex min-h-screen font-sans bg-slate-50 text-slate-900">
             {/* Sidebar */}
             <aside className="fixed left-0 top-0 h-full w-sidebar-expanded bg-white border-r border-gray-200 z-50 flex flex-col justify-between shadow-sm">
                 <div className="flex flex-col">

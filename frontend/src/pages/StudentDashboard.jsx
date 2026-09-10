@@ -123,77 +123,87 @@ export default function StudentDashboard() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredCourses.map((course) => (
-                        <div key={course.id} className="bg-white border border-gray-200 hover:border-gray-300 rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group">
-                            <div>
-                                <div className="relative w-full aspect-video bg-gray-100 overflow-hidden border-b border-gray-200">
+                    {filteredCourses.map((course, idx) => {
+                        const bgColors = ['bg-indigo-50', 'bg-blue-50', 'bg-purple-50', 'bg-pink-50'];
+                        const cardBg = bgColors[idx % bgColors.length];
+                        
+                        return (
+                        <div key={course.id} className={`${cardBg} rounded-[32px] p-3 transition-all hover:-translate-y-1 hover:shadow-md group flex flex-col`}>
+                            <div className="bg-white rounded-2xl p-4 shadow-sm flex flex-col h-full border border-slate-100">
+                                {/* Image */}
+                                <div className="relative w-full aspect-video bg-slate-100 rounded-xl overflow-hidden mb-4">
                                     {course.thumbnailUrl ? (
                                         <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                     ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-semibold tracking-wider uppercase bg-gray-50">No Preview</div>
+                                        <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs font-medium tracking-wider uppercase bg-slate-50">No Preview</div>
                                     )}
-                                    
-                                    <Link to={`/profile/${course.tutorId}`} className="absolute bottom-3 left-3 flex items-center gap-2 bg-white/95 border border-gray-200 hover:border-blue-300 backdrop-blur-sm px-2.5 py-1.5 rounded-md shadow-sm transition-all z-10 cursor-pointer">
-                                        <img src={course.authorAvatar || `https://ui-avatars.com/api/?name=${course.tutorName}&background=EBF5FF&color=1E3A8A`} alt="Tutor" className="w-6 h-6 rounded-full object-cover ring-2 ring-white" />
-                                        <span className="text-xs text-gray-700 font-medium hover:text-blue-600">{course.tutorName}</span>
-                                    </Link>
-                                    <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-white/95 border border-gray-200 backdrop-blur-sm px-2.5 py-1 rounded-md shadow-sm">
-                                        <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                                        <span className="text-[11px] text-gray-700 font-semibold">{course.categoryName}</span>
+                                    <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-white/95 border border-slate-200 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-sm">
+                                        <span className="w-2 h-2 rounded-full bg-secondary"></span>
+                                        <span className="text-[11px] text-slate-700 font-semibold">{course.categoryName}</span>
                                     </div>
                                 </div>
 
-                                <div className="p-5 flex flex-col gap-3">
-                                    <h3 className="text-lg text-gray-900 font-bold mb-1 group-hover:text-blue-600 transition-colors line-clamp-2 leading-tight">
+                                {/* Content */}
+                                <div className="flex flex-col flex-grow">
+                                    <h3 className="text-lg text-slate-800 font-bold mb-2 group-hover:text-primary transition-colors line-clamp-2 leading-tight">
                                         {course.title}
                                     </h3>
                                     
-                                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mt-2 min-h-[72px]">
+                                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 mt-auto mb-4 min-h-[72px]">
                                         {course.slots?.length > 0 ? (
                                             <div className="flex flex-wrap gap-2">
                                                 {course.slots.slice(0, 3).map(slot => {
                                                     const available = slot.maxSeats - slot.currentEnrolled;
                                                     const isFull = available <= 0;
                                                     return (
-                                                        <div key={slot.id} className={`flex flex-col items-center justify-center py-1.5 px-2.5 rounded-md border text-[11px] min-w-[65px] font-medium shadow-sm ${isFull ? 'bg-red-50 border-red-200 text-red-600' : 'bg-white border-gray-200 text-blue-600'}`}>
+                                                        <div key={slot.id} className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-lg border text-[11px] min-w-[65px] font-medium shadow-sm ${isFull ? 'bg-red-50 border-red-100 text-red-600' : 'bg-white border-slate-200 text-secondary'}`}>
                                                             <span className="font-bold mb-0.5 tracking-tight">{new Date(slot.slotDateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                                                             <span className="text-[9px] uppercase font-semibold">{isFull ? 'Full' : `${available} Left`}</span>
                                                         </div>
                                                     );
                                                 })}
                                                 {course.slots.length > 3 && (
-                                                    <div className="flex items-center justify-center py-1.5 px-2.5 rounded-md border bg-white border-gray-200 text-gray-500 text-[11px] font-bold shadow-sm">
+                                                    <div className="flex items-center justify-center py-1 px-2.5 rounded-lg border bg-white border-slate-200 text-slate-500 text-[11px] font-bold shadow-sm">
                                                         +{course.slots.length - 3}
                                                     </div>
                                                 )}
                                             </div>
                                         ) : (
-                                            <p className="text-[11px] text-gray-500 text-center py-2 font-medium">No active slots available</p>
+                                            <p className="text-[11px] text-slate-500 text-center py-2 font-medium">No active slots available</p>
                                         )}
                                     </div>
                                 </div>
-                            </div>
 
-                            <div className="p-5 pt-0 flex flex-col gap-4 border-t border-gray-100 pt-4 mt-auto">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Tuition</span>
-                                        <span className="text-xl text-gray-900 font-bold">${course.price}</span>
+                                {/* Footer Row 1: Author & Price */}
+                                <div className="flex items-center justify-between mb-3">
+                                    <Link to={`/profile/${course.tutorId}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                                        <img src={course.authorAvatar || `https://ui-avatars.com/api/?name=${course.tutorName}&background=EBF5FF&color=00C2CB`} alt="Tutor" className="w-8 h-8 rounded-full object-cover ring-2 ring-slate-50" />
+                                        <span className="text-sm text-slate-700 font-semibold">{course.tutorName}</span>
+                                    </Link>
+                                    <div className="flex items-center gap-2">
+                                        {course.demoVideoUrl && (
+                                            <button onClick={() => window.open(course.demoVideoUrl, '_blank')} className="text-secondary hover:text-secondary-hover transition-colors">
+                                                <PlayCircle size={20} />
+                                            </button>
+                                        )}
+                                        <span className="text-lg text-secondary font-bold">${course.price}</span>
                                     </div>
-                                    {course.demoVideoUrl && (
-                                        <button onClick={() => window.open(course.demoVideoUrl, '_blank')} className="inline-flex items-center gap-1.5 text-xs text-gray-600 bg-gray-50 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg transition-all font-medium">
-                                            <PlayCircle size={16} className="text-blue-500" />
-                                            <span>Demo</span>
-                                        </button>
-                                    )}
                                 </div>
-                                <button onClick={() => handleEnrollClick(course)} className="bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-xl px-4 py-2.5 flex items-center justify-center gap-2 transition-colors active:scale-[0.98] w-full">
-                                    <PlusCircle size={18} />
-                                    <span>Enroll Now</span>
-                                </button>
+
+                                {/* Footer Row 2: Stats & Enroll */}
+                                <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+                                    <div className="flex items-center gap-3 text-xs font-semibold text-slate-500">
+                                        <span className="flex items-center gap-1"><span className="text-yellow-400">⭐</span> 4.8</span>
+                                        <span className="flex items-center gap-1">👥 500+</span>
+                                    </div>
+                                    <button onClick={() => handleEnrollClick(course)} className="bg-primary hover:bg-primary-hover text-white font-medium rounded-xl px-4 py-1.5 flex items-center justify-center gap-1.5 transition-colors text-sm shadow-sm">
+                                        <PlusCircle size={16} />
+                                        <span>Enroll</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    ))}
+                    )})}
                 </div>
             )}
 
