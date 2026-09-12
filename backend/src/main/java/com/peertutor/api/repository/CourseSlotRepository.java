@@ -14,6 +14,9 @@ public interface CourseSlotRepository extends JpaRepository<CourseSlot, Long> {
     // Find SCHEDULED slots whose startTime is before a given cutoff (for expiry engine)
     List<CourseSlot> findBySessionStatusAndStartTimeBefore(String sessionStatus, LocalDateTime dateTime);
 
+    // Find SCHEDULED slots with specific enrollment count before a cutoff
+    List<CourseSlot> findBySessionStatusAndCurrentEnrolledAndStartTimeBefore(String sessionStatus, Integer currentEnrolled, LocalDateTime dateTime);
+
     // Find all slots of a course with a specific status
     List<CourseSlot> findByCourseIdAndSessionStatus(Long courseId, String sessionStatus);
 }

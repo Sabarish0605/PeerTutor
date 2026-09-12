@@ -39,6 +39,10 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/auth/**", "/uploads/**", "/api/users/public/**").permitAll() // Public endpoints
                         .anyRequest().authenticated() // Everything else requires a token
                 )
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint((request, response, authException) ->
+                                response.sendError(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"))
+                )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

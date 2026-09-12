@@ -1272,6 +1272,37 @@ export default function TutorDashboard() {
                                             style={{ width: '100%', background: '#121212', border: '1px solid #333', borderRadius: 8, padding: '9px 13px', color: '#f1f1f1', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
                                         />
                                     </div>
+                                    <div>
+                                        {(() => {
+                                            const totalEnrolled = editSlots.reduce((sum, s) => sum + (s.currentEnrolled || 0), 0);
+                                            const isPriceLocked = totalEnrolled > 0;
+                                            return (
+                                                <>
+                                                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: isPriceLocked ? '#f59e0b' : '#aaa', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase' }}>
+                                                        {isPriceLocked && <Lock size={12} color="#f59e0b" />}
+                                                        Price (₹) {isPriceLocked && `— Locked (${totalEnrolled} enrolled)`}
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        disabled={isPriceLocked}
+                                                        value={editForm.price}
+                                                        onChange={e => setEditForm({ ...editForm, price: e.target.value })}
+                                                        title={isPriceLocked ? 'Price cannot be changed because students are enrolled' : ''}
+                                                        style={{
+                                                            width: '100%',
+                                                            background: isPriceLocked ? '#111' : '#121212',
+                                                            border: `1px solid ${isPriceLocked ? '#3a2a10' : '#333'}`,
+                                                            borderRadius: 8, padding: '9px 13px',
+                                                            color: isPriceLocked ? '#666' : '#f1f1f1',
+                                                            fontSize: 13, outline: 'none', boxSizing: 'border-box',
+                                                            cursor: isPriceLocked ? 'not-allowed' : 'auto',
+                                                        }}
+                                                    />
+                                                </>
+                                            );
+                                        })()}
+                                    </div>
                                 </div>
                             </div>
 

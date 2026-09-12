@@ -120,10 +120,19 @@ public class CourseService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Unauthorized: You do not own this course");
         }
 
+        // ── Check price modification when enrolled students exist ────────────
+        long totalEnrolled = bookingRepository.countByCourseId(courseId);
+        if (request.getPrice() != null && !Objects.equals(course.getPrice(), request.getPrice())) {
+            if (totalEnrolled > 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Cannot modify course price because " + totalEnrolled + " student(s) have already enrolled in this course.");
+            }
+            course.setPrice(request.getPrice());
+        }
+
         // ── Always-editable global fields ────────────────────────────────────
         course.setTitle(request.getTitle());
         course.setDescription(request.getDescription());
-        course.setPrice(request.getPrice());
         course.setMaxPeers(request.getMaxPeers() != null ? request.getMaxPeers() : 1);
         course.setThumbnailUrl(request.getThumbnailUrl());
         course.setDemoVideoUrl(request.getDemoVideoUrl());
@@ -219,10 +228,16 @@ public class CourseService {
 
     public void deleteCourse(Long courseId, Long userId) {
         Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new RuntimeException("Course not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
 
         if (!course.getAuthor().getId().equals(userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Unauthorized: You do not own this course");
+        }
+
+        long activeBookings = bookingRepository.countByCourseId(courseId);
+        if (activeBookings > 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Cannot delete course: There are " + activeBookings + " active student booking(s) for this course. Please cancel or refund sessions first.");
         }
 
         courseRepository.delete(course);

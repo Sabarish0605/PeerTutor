@@ -49,7 +49,12 @@ public class ReviewService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "You are not enrolled in this session.");
         }
-        // ──────────────────────────────────────────────────────────────────
+
+        // ── Double-Review Prevention ───────────────────────────────────────
+        if (reviewRepository.existsByBookingId(bookingId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "A review has already been submitted for this session.");
+        }
 
         Review review = Review.builder()
                 .booking(booking)
@@ -59,9 +64,9 @@ public class ReviewService {
 
         Review savedReview = reviewRepository.save(review);
 
-        // Update tutor's average rating
-        TutorProfile tutor = booking.getCourse().getAuthor().getTutorProfile();
-        updateTutorRating(tutor);
+        // Update tutor's average rating dynamically
+        Long tutorUserId = booking.getCourse().getAuthor().getId();
+        tutorProfileRepository.findByUserId(tutorUserId).ifPresent(this::updateTutorRating);
 
         return savedReview;
     }
