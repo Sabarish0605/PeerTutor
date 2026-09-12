@@ -12,14 +12,19 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * SessionLifecycleService — runs every minute.
+ * SessionLifecycleService — runs every 60 seconds.
  *
- * Auto-expiry rule:
- *   Any SCHEDULED slot whose startTime is ≤ (now + 10 minutes)
- *   AND currentEnrolled == 0  →  mark as EXPIRED.
+ * Aggressive auto-expiry rule:
+ *   Any SCHEDULED slot whose startTime is ≤ (now − 30 minutes)
+ *   is marked EXPIRED, regardless of enrollment count.
  *
- * This prevents ghost empty slots from cluttering the view.
- * Slots with enrolled students are left to the tutor to start/close manually.
+ * The 30-minute grace window allows a tutor who is running late to still
+ * manually start the session. Past that window, the slot is considered a
+ * "ghost" and is expired to prevent it from appearing as "Starting Soon"
+ * on the student discover page.
+ *
+ * Slots that were manually transitioned to LIVE or CLOSED by the tutor
+ * are never touched by this scheduler.
  */
 @Service
 @RequiredArgsConstructor
@@ -28,26 +33,30 @@ public class SessionLifecycleService {
 
     private final CourseSlotRepository courseSlotRepository;
 
+    /** Grace period after startTime before a missed session is auto-expired. */
+    private static final int GRACE_MINUTES = 30;
+
     @Scheduled(fixedRate = 60_000)  // every 60 seconds
     @Transactional
-    public void autoExpireEmptySlots() {
-        LocalDateTime cutoff = LocalDateTime.now().plusMinutes(10);
+    public void autoExpirePastSlots() {
+        // Cutoff: any slot that started more than GRACE_MINUTES ago
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(GRACE_MINUTES);
 
         List<CourseSlot> candidates = courseSlotRepository
                 .findBySessionStatusAndStartTimeBefore("SCHEDULED", cutoff);
 
         int expiredCount = 0;
         for (CourseSlot slot : candidates) {
-            if (slot.getCurrentEnrolled() == 0) {
-                slot.setSessionStatus("EXPIRED");
-                courseSlotRepository.save(slot);
-                expiredCount++;
-                log.info("Auto-expired empty slot id={} (startTime={})", slot.getId(), slot.getStartTime());
-            }
+            slot.setSessionStatus("EXPIRED");
+            courseSlotRepository.save(slot);
+            expiredCount++;
+            log.info("Auto-expired past slot id={} (startTime={}, enrolled={})",
+                    slot.getId(), slot.getStartTime(), slot.getCurrentEnrolled());
         }
 
         if (expiredCount > 0) {
-            log.info("SessionLifecycleService: expired {} empty slot(s).", expiredCount);
+            log.info("SessionLifecycleService: auto-expired {} past slot(s).", expiredCount);
         }
     }
 }
+

@@ -1,165 +1,248 @@
-import { useEffect, useContext } from 'react';
+import { useEffect, useContext, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import Navbar from '../components/Navbar';
-import { Search, ChevronDown, MonitorPlay, Code, PenTool, Layout, Database, Terminal, CheckCircle2, Award, PlayCircle } from 'lucide-react';
+import FluxLogo from '../components/FluxLogo';
+import {
+    Search, ChevronDown, ArrowRight, Zap,
+    MonitorPlay, Code, PenTool, Database, Terminal, Layout,
+    Video, Users, Star
+} from 'lucide-react';
+
+const T = {
+    bg:     '#0f0f0f',
+    card:   '#141414',
+    border: '#1e1e1e',
+    text:   '#f1f1f1',
+    muted:  '#888',
+    accent: '#00C2CB',
+};
+
+const CATEGORIES = [
+    { name: 'Computer Science', icon: MonitorPlay, color: '#3ea6ff', bg: 'rgba(62,166,255,0.1)',   border: 'rgba(62,166,255,0.2)' },
+    { name: 'Web Development',  icon: Code,        color: '#f59e0b', bg: 'rgba(245,158,11,0.1)',   border: 'rgba(245,158,11,0.2)' },
+    { name: 'Design & UX',      icon: PenTool,     color: '#ec4899', bg: 'rgba(236,72,153,0.1)',   border: 'rgba(236,72,153,0.2)' },
+    { name: 'Data Science',     icon: Database,    color: '#10b981', bg: 'rgba(16,185,129,0.1)',   border: 'rgba(16,185,129,0.2)' },
+    { name: 'Software Eng',     icon: Terminal,    color: '#a78bfa', bg: 'rgba(167,139,250,0.1)',  border: 'rgba(167,139,250,0.2)' },
+    { name: 'UI / Layouts',     icon: Layout,      color: '#00C2CB', bg: 'rgba(0,194,203,0.1)',    border: 'rgba(0,194,203,0.2)' },
+];
+
+const HOW = [
+    { icon: <Star size={20} color="#00C2CB" />,    title: 'Browse Courses',      desc: 'Find peer-led courses across CS, design, data and more.' },
+    { icon: <Users size={20} color="#3ea6ff" />,   title: 'Book a Slot',         desc: 'Pick a time that works for you and reserve your seat.' },
+    { icon: <Video size={20} color="#a78bfa" />,   title: 'Join the Session',    desc: 'Connect live with your tutor via Google Meet or your preferred app.' },
+];
 
 export default function LandingPage() {
     const { user } = useContext(AuthContext);
-    const navigate = useNavigate();
+    const navigate  = useNavigate();
 
     useEffect(() => {
-        if (user) {
-            if (user.role === 'TUTOR') {
-                navigate('/tutor/dashboard');
-            } else {
-                navigate('/discover');
-            }
-        }
+        if (user) navigate(user.role === 'TUTOR' ? '/studio' : '/discover');
     }, [user, navigate]);
 
     if (user) return null;
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-            <Navbar />
+        <div style={{ minHeight: '100vh', background: T.bg, color: T.text, fontFamily: 'Roboto, Inter, sans-serif', overflowX: 'hidden' }}>
 
-            {/* Hero Section */}
-            <main className="flex-grow flex flex-col items-center">
-                <div className="w-full max-w-7xl mx-auto px-6 py-16 md:py-24 flex flex-col md:flex-row items-center gap-12">
-                    {/* Left side: Content */}
-                    <div className="w-full md:w-1/2 flex flex-col items-start text-left">
-                        <h1 className="text-5xl md:text-6xl font-bold text-slate-900 leading-[1.1] mb-6 tracking-tight">
-                            Upgrade Your Skills <br />
-                            <span className="text-primary">With PeerTutor</span>
-                        </h1>
-                        <p className="text-slate-600 text-lg mb-8 max-w-lg leading-relaxed">
-                            Join a thriving community of students teaching students. Find expert tutors, learn at your own pace, and master any subject today.
-                        </p>
+            {/* ── NAVBAR ── */}
+            <nav style={{
+                position: 'sticky', top: 0, zIndex: 50,
+                background: 'rgba(15,15,15,0.9)', backdropFilter: 'blur(14px)',
+                borderBottom: `1px solid ${T.border}`,
+                padding: '0 40px', height: 60,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}>
+                {/* Logo */}
+                <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+                    <FluxLogo size={28} fontSize={17} />
+                </Link>
 
-                        {/* Search Bar */}
-                        <div className="w-full max-w-xl bg-white p-2 rounded-full shadow-sm border border-slate-200 flex items-center gap-2">
-                            <div className="hidden sm:flex items-center gap-2 px-4 py-2 border-r border-slate-200 text-slate-600 font-medium cursor-pointer hover:bg-slate-50 rounded-l-full">
-                                <span>Category</span>
-                                <ChevronDown size={16} />
-                            </div>
-                            <div className="flex-grow flex items-center px-4">
-                                <Search size={20} className="text-slate-400 mr-2" />
-                                <input 
-                                    type="text" 
-                                    placeholder="Search for courses..." 
-                                    className="w-full bg-transparent outline-none text-slate-800 placeholder-slate-400"
-                                />
-                            </div>
-                            <button className="bg-primary hover:bg-primary-hover text-white px-6 py-3 rounded-full font-semibold transition-colors whitespace-nowrap">
-                                Find Course
-                            </button>
-                        </div>
+                {/* Single pair of auth buttons — only here */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Link to="/login" style={{
+                        padding: '7px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                        color: '#aaa', textDecoration: 'none', border: `1px solid ${T.border}`,
+                        transition: 'color 0.15s, border-color 0.15s',
+                    }}
+                        onMouseEnter={e => { e.currentTarget.style.color = T.text; e.currentTarget.style.borderColor = '#444'; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = '#aaa'; e.currentTarget.style.borderColor = T.border; }}
+                    >
+                        Log in
+                    </Link>
+                    <Link to="/register" style={{
+                        padding: '7px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+                        background: T.accent, color: '#0a0a0a', textDecoration: 'none',
+                        transition: 'background 0.15s',
+                    }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#00d6e0'}
+                        onMouseLeave={e => e.currentTarget.style.background = T.accent}
+                    >
+                        Sign up
+                    </Link>
+                </div>
+            </nav>
+
+            {/* ── HERO ── */}
+            <section style={{ position: 'relative', overflow: 'hidden' }}>
+                {/* Subtle glow blobs */}
+                <div style={{ position: 'absolute', top: -140, left: -140, width: 560, height: 560, borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,194,203,0.09) 0%, transparent 65%)', pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', top: 40, right: -100, width: 440, height: 440, borderRadius: '50%', background: 'radial-gradient(circle, rgba(62,166,255,0.06) 0%, transparent 65%)', pointerEvents: 'none' }} />
+                {/* Grid texture */}
+                <div style={{
+                    position: 'absolute', inset: 0,
+                    backgroundImage: 'linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px)',
+                    backgroundSize: '64px 64px', pointerEvents: 'none',
+                }} />
+
+                <div style={{
+                    maxWidth: 900, margin: '0 auto', padding: '96px 32px 72px',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
+                    gap: 20, position: 'relative', zIndex: 1,
+                }}>
+                    {/* Label */}
+                    <div style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 7,
+                        background: 'rgba(0,194,203,0.08)', border: '1px solid rgba(0,194,203,0.25)',
+                        borderRadius: 30, padding: '5px 14px',
+                        fontSize: 11, fontWeight: 700, color: T.accent, letterSpacing: '0.08em', textTransform: 'uppercase',
+                    }}>
+                        <Zap size={12} /> Students teaching students
                     </div>
 
-                    {/* Right side: Masonry Grid */}
-                    <div className="w-full md:w-1/2 flex justify-center md:justify-end">
-                        <div className="relative w-full max-w-md h-[500px]">
-                            {/* Top Left */}
-                            <div className="absolute top-0 left-0 w-48 h-64 bg-indigo-100 rounded-3xl shadow-sm border border-white/50 flex items-center justify-center overflow-hidden z-10">
-                                <img src="https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?q=80&w=600&auto=format&fit=crop" alt="Student" className="w-full h-full object-cover" />
-                            </div>
-                            {/* Top Right */}
-                            <div className="absolute top-12 right-0 w-40 h-40 bg-teal-100 rounded-full shadow-sm border border-white/50 flex items-center justify-center overflow-hidden z-20">
-                                <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=400&auto=format&fit=crop" alt="Student" className="w-full h-full object-cover" />
-                            </div>
-                            {/* Bottom Center */}
-                            <div className="absolute bottom-4 left-16 w-56 h-48 bg-coral-100 rounded-[40px] shadow-sm border border-white/50 flex items-center justify-center overflow-hidden z-30">
-                                <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=600&auto=format&fit=crop" alt="Students studying" className="w-full h-full object-cover" />
-                            </div>
-                            {/* Small accent dot */}
-                            <div className="absolute bottom-24 right-8 w-12 h-12 bg-secondary rounded-full shadow-md z-0"></div>
-                            <div className="absolute top-32 -left-6 w-8 h-8 bg-primary rounded-full shadow-md z-0"></div>
-                        </div>
+                    {/* Headline */}
+                    <h1 style={{
+                        fontSize: 'clamp(38px, 6vw, 68px)', fontWeight: 900,
+                        lineHeight: 1.06, letterSpacing: '-2px', margin: 0,
+                    }}>
+                        Learn directly from{' '}
+                        <span style={{
+                            background: 'linear-gradient(90deg, #00C2CB, #3ea6ff)',
+                            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+                        }}>
+                            your peers
+                        </span>
+                    </h1>
+
+                    {/* Sub */}
+                    <p style={{ fontSize: 17, color: T.muted, maxWidth: 520, lineHeight: 1.7, margin: 0 }}>
+                        FLUX connects you with fellow students who can teach you exactly what you need — live, over a video call, on your schedule.
+                    </p>
+
+                    {/* Single CTA */}
+                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', marginTop: 8 }}>
+                        <Link to="/register" style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 8,
+                            background: T.accent, color: '#0a0a0a',
+                            padding: '13px 30px', borderRadius: 10, textDecoration: 'none',
+                            fontSize: 14, fontWeight: 700, transition: 'background 0.15s',
+                        }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#00d6e0'}
+                            onMouseLeave={e => e.currentTarget.style.background = T.accent}
+                        >
+                            Get Started Free <ArrowRight size={16} />
+                        </Link>
                     </div>
                 </div>
+            </section>
 
-                {/* Categories Section */}
-                <div className="w-full bg-white py-20 border-y border-slate-100">
-                    <div className="max-w-7xl mx-auto px-6">
-                        <div className="text-center mb-12">
-                            <h2 className="text-3xl font-bold text-slate-900 mb-4 tracking-tight">Explore Most Popular Course Categories</h2>
-                            <p className="text-slate-500">Discover top categories chosen by our community of learners.</p>
-                        </div>
-
-                        <div className="flex flex-wrap justify-center gap-6">
-                            {[
-                                { name: "Computer Science", icon: MonitorPlay, color: "bg-blue-100 text-blue-600" },
-                                { name: "Web Development", icon: Code, color: "bg-orange-100 text-orange-600" },
-                                { name: "Design & UX", icon: PenTool, color: "bg-pink-100 text-pink-600" },
-                                { name: "Data Science", icon: Database, color: "bg-emerald-100 text-emerald-600" },
-                                { name: "Software Eng", icon: Terminal, color: "bg-purple-100 text-purple-600" },
-                            ].map((category, idx) => (
-                                <Link to="/login" key={idx} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all flex flex-col items-center gap-4 w-40 cursor-pointer">
-                                    <div className={`w-14 h-14 rounded-full flex items-center justify-center ${category.color}`}>
-                                        <category.icon size={24} />
+            {/* ── HOW IT WORKS ── */}
+            <section style={{ padding: '72px 32px', borderTop: `1px solid ${T.border}` }}>
+                <div style={{ maxWidth: 900, margin: '0 auto' }}>
+                    <h2 style={{ fontSize: 28, fontWeight: 800, color: T.text, textAlign: 'center', margin: '0 0 48px', letterSpacing: '-0.5px' }}>
+                        How it works
+                    </h2>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+                        {HOW.map((step, i) => (
+                            <div key={step.title} style={{
+                                background: T.card, border: `1px solid ${T.border}`,
+                                borderRadius: 16, padding: '28px 24px',
+                                display: 'flex', flexDirection: 'column', gap: 14,
+                                transition: 'border-color 0.2s',
+                            }}
+                                onMouseEnter={e => e.currentTarget.style.borderColor = '#333'}
+                                onMouseLeave={e => e.currentTarget.style.borderColor = T.border}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                    <div style={{
+                                        width: 42, height: 42, borderRadius: 12,
+                                        background: 'rgba(255,255,255,0.04)', border: `1px solid ${T.border}`,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        flexShrink: 0,
+                                    }}>
+                                        {step.icon}
                                     </div>
-                                    <span className="font-semibold text-slate-800 text-sm text-center">{category.name}</span>
-                                </Link>
-                            ))}
-                        </div>
+                                    <span style={{ fontSize: 11, color: '#444', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                        Step {i + 1}
+                                    </span>
+                                </div>
+                                <h3 style={{ fontSize: 16, fontWeight: 700, color: T.text, margin: 0 }}>{step.title}</h3>
+                                <p style={{ fontSize: 13, color: T.muted, margin: 0, lineHeight: 1.65 }}>{step.desc}</p>
+                            </div>
+                        ))}
                     </div>
                 </div>
+            </section>
 
-                {/* Features Section */}
-                <div className="w-full max-w-7xl mx-auto px-6 py-24 flex flex-col md:flex-row items-center gap-16">
-                    {/* Left side: Large Image */}
-                    <div className="w-full md:w-1/2">
-                        <div className="relative w-full aspect-square md:aspect-[4/5] bg-blue-50 rounded-[40px] overflow-hidden border border-slate-100 shadow-sm p-4">
-                            <img 
-                                src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=800&auto=format&fit=crop" 
-                                alt="Learning experience" 
-                                className="w-full h-full object-cover rounded-[32px]"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Right side: Features List */}
-                    <div className="w-full md:w-1/2 flex flex-col">
-                        <h2 className="text-4xl font-bold text-slate-900 mb-6 tracking-tight">Transform Your Learning Experience</h2>
-                        <p className="text-slate-600 mb-10 text-lg">
-                            We provide all the tools you need to succeed. Learn at your own pace with high-quality content from top peer tutors.
-                        </p>
-
-                        <div className="space-y-8">
-                            <div className="flex gap-4 items-start">
-                                <div className="mt-1 w-12 h-12 rounded-xl bg-teal-50 flex items-center justify-center flex-shrink-0 text-secondary">
-                                    <Award size={24} />
+            {/* ── CATEGORIES ── */}
+            <section style={{ padding: '72px 32px', borderTop: `1px solid ${T.border}`, background: '#0a0a0a' }}>
+                <div style={{ maxWidth: 900, margin: '0 auto' }}>
+                    <h2 style={{ fontSize: 28, fontWeight: 800, color: T.text, textAlign: 'center', margin: '0 0 10px', letterSpacing: '-0.5px' }}>
+                        Topics you can learn
+                    </h2>
+                    <p style={{ fontSize: 14, color: T.muted, textAlign: 'center', margin: '0 0 40px' }}>
+                        Browse courses across these popular areas.
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
+                        {CATEGORIES.map(cat => (
+                            <Link
+                                to="/register"
+                                key={cat.name}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: 10,
+                                    background: T.card, border: `1px solid ${T.border}`,
+                                    borderRadius: 12, padding: '12px 18px',
+                                    textDecoration: 'none', cursor: 'pointer',
+                                    transition: 'border-color 0.2s, transform 0.2s',
+                                }}
+                                onMouseEnter={e => {
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.borderColor = cat.border;
+                                }}
+                                onMouseLeave={e => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.borderColor = T.border;
+                                }}
+                            >
+                                <div style={{
+                                    width: 32, height: 32, borderRadius: 8,
+                                    background: cat.bg, border: `1px solid ${cat.border}`,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                                }}>
+                                    <cat.icon size={16} color={cat.color} />
                                 </div>
-                                <div>
-                                    <h3 className="text-xl font-bold text-slate-900 mb-2">Course Complete Certificate</h3>
-                                    <p className="text-slate-600 leading-relaxed">Earn verifiable certificates upon completion to showcase your new skills to employers and institutions.</p>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-4 items-start">
-                                <div className="mt-1 w-12 h-12 rounded-xl bg-coral-50 flex items-center justify-center flex-shrink-0 text-primary">
-                                    <PlayCircle size={24} />
-                                </div>
-                                <div>
-                                    <h3 className="text-xl font-bold text-slate-900 mb-2">Quizzes, Videos & More</h3>
-                                    <p className="text-slate-600 leading-relaxed">Engage with interactive content, test your knowledge with quizzes, and watch high-quality video lectures.</p>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-4 items-start">
-                                <div className="mt-1 w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0 text-indigo-500">
-                                    <CheckCircle2 size={24} />
-                                </div>
-                                <div>
-                                    <h3 className="text-xl font-bold text-slate-900 mb-2">Expert Peer Reviews</h3>
-                                    <p className="text-slate-600 leading-relaxed">Get personalized feedback and guidance from tutors who have recently mastered the exact same material.</p>
-                                </div>
-                            </div>
-                        </div>
+                                <span style={{ fontSize: 13, fontWeight: 600, color: '#ccc' }}>{cat.name}</span>
+                            </Link>
+                        ))}
                     </div>
                 </div>
-            </main>
+            </section>
+
+            {/* ── FOOTER ── */}
+            <footer style={{ borderTop: `1px solid ${T.border}`, padding: '20px 40px' }}>
+                <div style={{
+                    maxWidth: 900, margin: '0 auto',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8,
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <FluxLogo size={22} fontSize={13} color="#444" />
+                        <span style={{ fontSize: 13, color: '#444', fontWeight: 600 }}>
+                            © {new Date().getFullYear()}
+                        </span>
+                    </div>
+                    <span style={{ fontSize: 12, color: '#333' }}>Connect · Learn · Grow</span>
+                </div>
+            </footer>
         </div>
     );
 }

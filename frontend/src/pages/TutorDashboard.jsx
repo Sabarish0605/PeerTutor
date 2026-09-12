@@ -3,10 +3,11 @@ import { AuthContext } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { toast } from 'react-hot-toast';
+import { parseSafeDate, formatSafeDate, formatSafeTimeRange } from '../utils/dateUtils';
 import { 
     Plus, X, Edit2, ChevronDown, Trash2, Upload, PlayCircle, 
     Users, Eye, Sparkles, BookOpen, Star, Video, Check, ExternalLink,
-    Clock, Calendar, UserCheck
+    Clock, Calendar, UserCheck, Lock, Save, AlertCircle
 } from 'lucide-react';
 
 export default function TutorDashboard() {
@@ -44,6 +45,12 @@ export default function TutorDashboard() {
         meetLink: '',
         categoryName: ''
     });
+
+    // Edit course state
+    const [editingCourse, setEditingCourse] = useState(null);   // the course being edited
+    const [editForm, setEditForm] = useState(null);              // mutable copy of course data
+    const [editSlots, setEditSlots] = useState([]);              // mutable copy of slot list
+    const [savingEdit, setSavingEdit] = useState(false);
 
     const fetchStudioData = async () => {
         try {
@@ -152,6 +159,66 @@ export default function TutorDashboard() {
             toast.error("Could not load the student roster.");
         } finally {
             setLoadingRoster(false);
+        }
+    };
+
+    // ── Edit course helpers ──────────────────────────────────────────────────
+    const handleOpenEdit = (course) => {
+        setEditingCourse(course);
+        setEditForm({
+            title: course.title || '',
+            description: course.description || '',
+            thumbnailUrl: course.thumbnailUrl || '',
+            demoVideoUrl: course.demoVideoUrl || '',
+            meetLink: course.meetLink || '',
+            categoryName: course.categoryName || '',
+            price: course.price ?? '',
+            maxPeers: course.maxPeers ?? 5,
+        });
+        // Build editable slot rows from backend data
+        setEditSlots((course.slots || []).map(slot => {
+            const start = parseSafeDate(slot.startTime);
+            const end   = parseSafeDate(slot.endTime);
+            return {
+                id: slot.id,
+                // date/time as HTML-input-friendly strings
+                date:      start ? start.toISOString().slice(0, 10) : '',
+                startTime: start ? start.toTimeString().slice(0, 5) : '',
+                endTime:   end   ? end.toTimeString().slice(0, 5)   : '',
+                maxSeats:  slot.maxSeats,
+                currentEnrolled: slot.currentEnrolled,
+                sessionStatus: slot.sessionStatus,
+            };
+        }));
+    };
+
+    const handleCloseEdit = () => {
+        setEditingCourse(null);
+        setEditForm(null);
+        setEditSlots([]);
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editingCourse || !editForm) return;
+        setSavingEdit(true);
+        try {
+            const formattedSlots = editSlots.map(s => ({
+                id: s.id ?? null,                      // null = new slot
+                startTime: s.date && s.startTime ? `${s.date}T${s.startTime}:00` : null,
+                endTime:   s.date && s.endTime   ? `${s.date}T${s.endTime}:00`   : null,
+                maxSeats: parseInt(s.maxSeats) || 1,
+            }));
+
+            const payload = { ...editForm, slots: formattedSlots };
+            const res = await api.put(`/courses/${editingCourse.id}/user/${user.id}`, payload);
+
+            setMyCourses(prev => prev.map(c => c.id === editingCourse.id ? res.data : c));
+            toast.success('Course updated successfully!');
+            handleCloseEdit();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to save course changes.');
+        } finally {
+            setSavingEdit(false);
         }
     };
 
@@ -805,8 +872,8 @@ export default function TutorDashboard() {
                                                     {course.slots && course.slots.length > 0 ? (
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 200, overflowY: 'auto' }}>
                                                             {course.slots.map(slot => {
-                                                                const start = slot.startTime ? new Date(slot.startTime) : null;
-                                                                const end = slot.endTime ? new Date(slot.endTime) : null;
+                                                                const start = parseSafeDate(slot.startTime);
+                                                                const end   = parseSafeDate(slot.endTime);
                                                                 const now = new Date();
                                                                 const canStart = slot.sessionStatus === 'SCHEDULED' && start && (start - now) <= 15 * 60 * 1000;
                                                                 const statusColors = {
@@ -820,10 +887,9 @@ export default function TutorDashboard() {
                                                                     <div key={slot.id} style={{ background: '#1a1a1a', borderRadius: 6, padding: 8, border: '1px solid #2a2a2a' }}>
                                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                                                                             <span style={{ fontSize: 11, color: '#ccc' }}>
-                                                                                {start ? start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '?'}
+                                                                                {start ? formatSafeDate(start, { month: 'short', day: 'numeric' }) : '?'}
                                                                                 {' '}
-                                                                                {start ? start.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : ''}
-                                                                                {end ? ` – ${end.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}` : ''}
+                                                                                {formatSafeTimeRange(slot.startTime, slot.endTime)}
                                                                             </span>
                                                                             <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: sc.bg, color: sc.color }}>
                                                                                 {slot.sessionStatus}
@@ -893,6 +959,23 @@ export default function TutorDashboard() {
                                             >
                                                 <Eye size={14} color="#00C2CB" />
                                                 <span>Students</span>
+                                            </button>
+
+                                            <button
+                                                onClick={() => handleOpenEdit(course)}
+                                                style={{
+                                                    flex: 1, padding: '8px 0', borderRadius: 8,
+                                                    background: '#282828', border: '1px solid #383838',
+                                                    color: '#f1f1f1', fontSize: 12, fontWeight: 600,
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                                    cursor: 'pointer', transition: 'background 0.15s',
+                                                }}
+                                                onMouseEnter={e => e.currentTarget.style.background = '#333'}
+                                                onMouseLeave={e => e.currentTarget.style.background = '#282828'}
+                                                title="Edit Course"
+                                            >
+                                                <Edit2 size={14} color="#3ea6ff" />
+                                                <span>Edit</span>
                                             </button>
 
                                             <button
@@ -1091,6 +1174,302 @@ export default function TutorDashboard() {
                     </div>
                 )}
             </div>
+
+            {/* ── Edit Course Modal ── */}
+            {editingCourse && editForm && (
+                <div style={{
+                    position: 'fixed', inset: 0, zIndex: 100,
+                    background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
+                    display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+                    padding: '24px 16px', overflowY: 'auto',
+                }}>
+                    <div style={{
+                        background: '#1c1c1c', border: '1px solid #333', borderRadius: 20,
+                        width: '100%', maxWidth: 720,
+                        boxShadow: '0 24px 64px rgba(0,0,0,0.85)',
+                        marginBottom: 24,
+                    }}>
+                        {/* Modal header */}
+                        <div style={{ padding: '20px 24px', borderBottom: '1px solid #2d2d2d', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <Edit2 size={18} color="#3ea6ff" />
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#f1f1f1' }}>Edit Course</h3>
+                                    <p style={{ margin: '2px 0 0', fontSize: 12, color: '#888' }}>{editingCourse.title}</p>
+                                </div>
+                            </div>
+                            <button onClick={handleCloseEdit} style={{ background: 'transparent', border: 'none', color: '#aaa', cursor: 'pointer' }}>
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 22 }}>
+
+                            {/* ── GLOBAL FIELDS (always editable) ── */}
+                            <div>
+                                <p style={{ fontSize: 11, color: '#00C2CB', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 12px' }}>
+                                    ✦ Global Fields — Always Editable
+                                </p>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                                    <div style={{ gridColumn: '1 / -1' }}>
+                                        <label style={{ display: 'block', fontSize: 11, color: '#aaa', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase' }}>Title</label>
+                                        <input
+                                            value={editForm.title}
+                                            onChange={e => setEditForm({ ...editForm, title: e.target.value })}
+                                            style={{ width: '100%', background: '#121212', border: '1px solid #333', borderRadius: 8, padding: '9px 13px', color: '#f1f1f1', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                                            onFocus={e => e.target.style.borderColor = '#00C2CB'}
+                                            onBlur={e => e.target.style.borderColor = '#333'}
+                                        />
+                                    </div>
+                                    <div style={{ gridColumn: '1 / -1' }}>
+                                        <label style={{ display: 'block', fontSize: 11, color: '#aaa', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase' }}>Description</label>
+                                        <textarea
+                                            rows={3}
+                                            value={editForm.description}
+                                            onChange={e => setEditForm({ ...editForm, description: e.target.value })}
+                                            style={{ width: '100%', background: '#121212', border: '1px solid #333', borderRadius: 8, padding: '9px 13px', color: '#f1f1f1', fontSize: 14, outline: 'none', boxSizing: 'border-box', resize: 'vertical' }}
+                                            onFocus={e => e.target.style.borderColor = '#00C2CB'}
+                                            onBlur={e => e.target.style.borderColor = '#333'}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: 11, color: '#aaa', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase' }}>Thumbnail URL</label>
+                                        <input
+                                            value={editForm.thumbnailUrl}
+                                            onChange={e => setEditForm({ ...editForm, thumbnailUrl: e.target.value })}
+                                            placeholder="https://..."
+                                            style={{ width: '100%', background: '#121212', border: '1px solid #333', borderRadius: 8, padding: '9px 13px', color: '#f1f1f1', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: 11, color: '#aaa', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase' }}>Meet Link</label>
+                                        <input
+                                            value={editForm.meetLink}
+                                            onChange={e => setEditForm({ ...editForm, meetLink: e.target.value })}
+                                            placeholder="https://meet.google.com/..."
+                                            style={{ width: '100%', background: '#121212', border: '1px solid #333', borderRadius: 8, padding: '9px 13px', color: '#f1f1f1', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: 11, color: '#aaa', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase' }}>Category</label>
+                                        <select
+                                            value={editForm.categoryName}
+                                            onChange={e => setEditForm({ ...editForm, categoryName: e.target.value })}
+                                            style={{ width: '100%', background: '#121212', border: '1px solid #333', borderRadius: 8, padding: '9px 12px', color: '#f1f1f1', fontSize: 13, outline: 'none', boxSizing: 'border-box', cursor: 'pointer' }}
+                                        >
+                                            <option value="">Select category...</option>
+                                            {CS_CATEGORIES.map(cat => (
+                                                <option key={cat} value={cat} style={{ background: '#181818' }}>{cat}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: 11, color: '#aaa', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase' }}>Demo Video URL (Optional)</label>
+                                        <input
+                                            value={editForm.demoVideoUrl}
+                                            onChange={e => setEditForm({ ...editForm, demoVideoUrl: e.target.value })}
+                                            placeholder="https://youtube.com/..."
+                                            style={{ width: '100%', background: '#121212', border: '1px solid #333', borderRadius: 8, padding: '9px 13px', color: '#f1f1f1', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* ── SLOTS (granular locking) ── */}
+                            <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                    <p style={{ fontSize: 11, color: '#facc15', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>
+                                        ⏱ Time Slots — Conditional Editing
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={() => setEditSlots([...editSlots, { id: null, date: '', startTime: '', endTime: '', maxSeats: editForm.maxPeers || 1, currentEnrolled: 0, sessionStatus: 'SCHEDULED' }])}
+                                        style={{ background: '#222', border: '1px dashed #444', borderRadius: 6, padding: '5px 12px', color: '#aaa', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
+                                    >
+                                        <Plus size={13} /> Add Slot
+                                    </button>
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                    {editSlots.map((slot, idx) => {
+                                        const isLocked = (slot.currentEnrolled ?? 0) > 0;
+                                        return (
+                                            <div
+                                                key={slot.id ?? `new-${idx}`}
+                                                style={{
+                                                    background: isLocked ? '#181818' : '#1a1a1a',
+                                                    border: `1px solid ${isLocked ? '#3a2a10' : '#2e2e2e'}`,
+                                                    borderRadius: 10,
+                                                    padding: 12,
+                                                }}
+                                            >
+                                                {/* Slot header */}
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                        {isLocked ? (
+                                                            <>
+                                                                <Lock size={13} color="#f59e0b" />
+                                                                <span style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Slot {idx + 1} — Locked</span>
+                                                                <span style={{ fontSize: 10, color: '#666', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 4, padding: '2px 6px' }}>
+                                                                    {slot.currentEnrolled} student{slot.currentEnrolled !== 1 ? 's' : ''} enrolled
+                                                                </span>
+                                                            </>
+                                                        ) : (
+                                                            <span style={{ fontSize: 11, fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Slot {idx + 1}</span>
+                                                        )}
+                                                    </div>
+                                                    {!isLocked && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setEditSlots(editSlots.filter((_, i) => i !== idx))}
+                                                            style={{ background: 'transparent', border: 'none', color: '#ff5555', cursor: 'pointer', padding: 2 }}
+                                                            title="Remove this slot"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                {/* Locked notice */}
+                                                {isLocked && (
+                                                    <div style={{
+                                                        display: 'flex', alignItems: 'center', gap: 6,
+                                                        background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.2)',
+                                                        borderRadius: 6, padding: '6px 10px', marginBottom: 10,
+                                                        fontSize: 11, color: '#c9924a',
+                                                    }}>
+                                                        <AlertCircle size={12} />
+                                                        Date, time, and price cannot be changed — students are already registered for this slot.
+                                                    </div>
+                                                )}
+
+                                                {/* Slot fields */}
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                                                    <div>
+                                                        <label style={{ display: 'block', fontSize: 10, color: '#888', marginBottom: 4 }}>Date</label>
+                                                        <input
+                                                            type="date"
+                                                            disabled={isLocked}
+                                                            value={slot.date}
+                                                            onChange={e => {
+                                                                const copy = [...editSlots];
+                                                                copy[idx] = { ...copy[idx], date: e.target.value };
+                                                                setEditSlots(copy);
+                                                            }}
+                                                            title={isLocked ? 'Cannot change — students enrolled' : ''}
+                                                            style={{
+                                                                width: '100%', background: isLocked ? '#111' : '#1c1c1c',
+                                                                border: `1px solid ${isLocked ? '#2a2a2a' : '#333'}`,
+                                                                borderRadius: 6, padding: '7px 10px',
+                                                                color: isLocked ? '#555' : '#f1f1f1',
+                                                                fontSize: 12, boxSizing: 'border-box',
+                                                                cursor: isLocked ? 'not-allowed' : 'auto',
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ display: 'block', fontSize: 10, color: '#888', marginBottom: 4 }}>Start Time</label>
+                                                        <input
+                                                            type="time"
+                                                            disabled={isLocked}
+                                                            value={slot.startTime}
+                                                            onChange={e => {
+                                                                const copy = [...editSlots];
+                                                                copy[idx] = { ...copy[idx], startTime: e.target.value };
+                                                                setEditSlots(copy);
+                                                            }}
+                                                            title={isLocked ? 'Cannot change — students enrolled' : ''}
+                                                            style={{
+                                                                width: '100%', background: isLocked ? '#111' : '#1c1c1c',
+                                                                border: `1px solid ${isLocked ? '#2a2a2a' : '#333'}`,
+                                                                borderRadius: 6, padding: '7px 10px',
+                                                                color: isLocked ? '#555' : '#f1f1f1',
+                                                                fontSize: 12, boxSizing: 'border-box',
+                                                                cursor: isLocked ? 'not-allowed' : 'auto',
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ display: 'block', fontSize: 10, color: '#888', marginBottom: 4 }}>End Time</label>
+                                                        <input
+                                                            type="time"
+                                                            disabled={isLocked}
+                                                            value={slot.endTime}
+                                                            onChange={e => {
+                                                                const copy = [...editSlots];
+                                                                copy[idx] = { ...copy[idx], endTime: e.target.value };
+                                                                setEditSlots(copy);
+                                                            }}
+                                                            title={isLocked ? 'Cannot change — students enrolled' : ''}
+                                                            style={{
+                                                                width: '100%', background: isLocked ? '#111' : '#1c1c1c',
+                                                                border: `1px solid ${isLocked ? '#2a2a2a' : '#333'}`,
+                                                                borderRadius: 6, padding: '7px 10px',
+                                                                color: isLocked ? '#555' : '#f1f1f1',
+                                                                fontSize: 12, boxSizing: 'border-box',
+                                                                cursor: isLocked ? 'not-allowed' : 'auto',
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {/* Max seats — always editable (can only be increased for enrolled slots) */}
+                                                <div style={{ marginTop: 10 }}>
+                                                    <label style={{ display: 'block', fontSize: 10, color: '#888', marginBottom: 4 }}>
+                                                        Max Seats{isLocked ? ' (can increase only)' : ''}
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        min={isLocked ? slot.currentEnrolled : 1}
+                                                        max={100}
+                                                        value={slot.maxSeats}
+                                                        onChange={e => {
+                                                            const copy = [...editSlots];
+                                                            copy[idx] = { ...copy[idx], maxSeats: e.target.value };
+                                                            setEditSlots(copy);
+                                                        }}
+                                                        style={{
+                                                            width: 100, background: '#1c1c1c', border: '1px solid #333',
+                                                            borderRadius: 6, padding: '7px 10px',
+                                                            color: '#f1f1f1', fontSize: 12, boxSizing: 'border-box',
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Modal footer */}
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 8, borderTop: '1px solid #2a2a2a' }}>
+                                <button
+                                    type="button"
+                                    onClick={handleCloseEdit}
+                                    style={{ background: 'transparent', border: '1px solid #3f3f3f', color: '#aaa', borderRadius: 20, padding: '9px 20px', fontSize: 13, cursor: 'pointer' }}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={savingEdit}
+                                    onClick={handleSaveEdit}
+                                    style={{
+                                        background: savingEdit ? '#1a3a3a' : '#00C2CB',
+                                        border: 'none', color: savingEdit ? '#555' : '#0f0f0f',
+                                        borderRadius: 20, padding: '9px 24px', fontSize: 13, fontWeight: 700,
+                                        cursor: savingEdit ? 'not-allowed' : 'pointer',
+                                        display: 'flex', alignItems: 'center', gap: 6,
+                                    }}
+                                >
+                                    <Save size={14} />
+                                    {savingEdit ? 'Saving...' : 'Save Changes'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ── Student Roster Modal ── */}
             {selectedCourseRoster && (

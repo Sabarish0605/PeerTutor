@@ -33,9 +33,20 @@ public class CourseController {
         return ResponseEntity.ok(courseService.getCoursesByAuthor(userId));
     }
 
-    // NEW: Public endpoint to get all courses for the Discover page
+    /**
+     * Public endpoint to get all courses for the Discover page.
+     *
+     * Optional query param: ?studentId={id}
+     * When provided, each CourseResponse will include a non-null enrolledSlotId
+     * if the student is already booked for a slot in that course.
+     */
     @GetMapping
-    public ResponseEntity<List<CourseResponse>> getAllCourses() {
+    public ResponseEntity<List<CourseResponse>> getAllCourses(
+            @RequestParam(required = false) Long studentId
+    ) {
+        if (studentId != null) {
+            return ResponseEntity.ok(courseService.getAllCoursesForStudent(studentId));
+        }
         return ResponseEntity.ok(courseService.getAllCourses());
     }
 
@@ -67,4 +78,4 @@ public class CourseController {
         courseService.deleteCourse(courseId, userId);
         return ResponseEntity.noContent().build();
     }
-}
+}

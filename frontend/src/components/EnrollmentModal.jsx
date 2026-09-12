@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Calendar, Clock, Users, X, CalendarCheck } from 'lucide-react';
+import { formatSafeDate, formatSafeTime, isSlotExpired } from '../utils/dateUtils';
 
 export default function EnrollmentModal({ course, onClose, onConfirm }) {
     const [selectedSlotId, setSelectedSlotId] = useState(null);
+
+    const upcomingSlots = (course?.slots || []).filter(slot => !isSlotExpired(slot));
 
     const handleConfirm = () => {
         if (!selectedSlotId) {
@@ -55,7 +58,7 @@ export default function EnrollmentModal({ course, onClose, onConfirm }) {
                         Choose an available time slot to schedule your learning session.
                     </p>
 
-                    {(!course.slots || course.slots.length === 0) ? (
+                    {upcomingSlots.length === 0 ? (
                         <div
                             className="text-center py-10 rounded-xl border border-dashed text-xs font-medium"
                             style={{
@@ -68,10 +71,9 @@ export default function EnrollmentModal({ course, onClose, onConfirm }) {
                         </div>
                     ) : (
                         <div className="space-y-3">
-                            {course.slots.map(slot => {
+                            {upcomingSlots.map(slot => {
                                 const isFull = slot.currentEnrolled >= slot.maxSeats;
                                 const isSelected = selectedSlotId === slot.id;
-                                const dateObj = new Date(slot.slotDateTime);
                                 const seatsLeft = Math.max(0, slot.maxSeats - slot.currentEnrolled);
 
                                 return (
@@ -112,7 +114,7 @@ export default function EnrollmentModal({ course, onClose, onConfirm }) {
                                             <div className="flex items-center gap-2 text-sm font-semibold">
                                                 <Calendar size={16} color={isSelected ? '#00C2CB' : '#aaaaaa'} />
                                                 <span style={{ color: isSelected ? '#00C2CB' : '#f1f1f1' }}>
-                                                    {dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                                                    {formatSafeDate(slot.startTime || slot.slotDateTime)}
                                                 </span>
                                             </div>
                                             <span
@@ -130,7 +132,7 @@ export default function EnrollmentModal({ course, onClose, onConfirm }) {
                                         <div className="flex items-center gap-6 text-xs text-[#888888]">
                                             <span className="flex items-center gap-1.5">
                                                 <Clock size={14} color="#666" />
-                                                {dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                {formatSafeTime(slot.startTime || slot.slotDateTime)}
                                             </span>
                                             <span className="flex items-center gap-1.5">
                                                 <Users size={14} color="#666" />
@@ -173,14 +175,14 @@ export default function EnrollmentModal({ course, onClose, onConfirm }) {
                     </button>
                     <button 
                         onClick={handleConfirm}
-                        disabled={!selectedSlotId || (!course.slots || course.slots.length === 0)}
+                        disabled={!selectedSlotId || upcomingSlots.length === 0}
                         className="flex-1 py-2.5 px-4 text-sm font-bold rounded-xl transition-all cursor-pointer shadow-sm"
                         style={{
                             background: '#00C2CB',
                             color: '#0f0f0f',
                             border: 'none',
-                            opacity: (!selectedSlotId || (!course.slots || course.slots.length === 0)) ? 0.35 : 1,
-                            cursor: (!selectedSlotId || (!course.slots || course.slots.length === 0)) ? 'not-allowed' : 'pointer',
+                            opacity: (!selectedSlotId || upcomingSlots.length === 0) ? 0.35 : 1,
+                            cursor: (!selectedSlotId || upcomingSlots.length === 0) ? 'not-allowed' : 'pointer',
                         }}
                         onMouseEnter={e => {
                             if (selectedSlotId) e.currentTarget.style.background = '#00d6e0';

@@ -1,10 +1,11 @@
 import { useState, useEffect, useContext, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api from '../services/api';
 import { toast } from 'react-hot-toast';
 import EnrollmentModal from '../components/EnrollmentModal';
-import { PlayCircle, PlusCircle, Clock, ChevronRight, ChevronLeft } from 'lucide-react';
+import { isSlotExpired } from '../utils/dateUtils';
+import { PlayCircle, PlusCircle, Clock, ChevronRight, ChevronLeft, CheckCircle, Search, X } from 'lucide-react';
 
 const T = {
     bg:        '#0f0f0f',
@@ -168,6 +169,8 @@ function CategoryBar({ selected, onSelect }) {
 
 export default function StudentDashboard() {
     const { user } = useContext(AuthContext);
+    const [searchParams, setSearchParams] = useSearchParams();
+    const searchQuery = (searchParams.get('q') || '').trim();
 
     const [courses, setCourses] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState('');
@@ -176,7 +179,9 @@ export default function StudentDashboard() {
 
     const fetchMarketplaceData = async () => {
         try {
-            const res = await api.get('/courses');
+            // Include studentId so the backend can return enrolledSlotId per course
+            const params = user?.id ? `?studentId=${user.id}` : '';
+            const res = await api.get(`/courses${params}`);
             setCourses(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
             console.error("Failed to load marketplace data", err);
@@ -187,9 +192,18 @@ export default function StudentDashboard() {
 
     useEffect(() => { fetchMarketplaceData(); }, []);
 
-    const filteredCourses = courses.filter(c =>
-        selectedCategory === '' || c.categoryName === selectedCategory
-    );
+    const filteredCourses = courses.filter(c => {
+        const matchesCategory = selectedCategory === '' || c.categoryName === selectedCategory;
+        if (!matchesCategory) return false;
+
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        const titleMatch = c.title?.toLowerCase().includes(q);
+        const descMatch = c.description?.toLowerCase().includes(q);
+        const catMatch = c.categoryName?.toLowerCase().includes(q);
+        const tutorMatch = c.tutorName?.toLowerCase().includes(q);
+        return Boolean(titleMatch || descMatch || catMatch || tutorMatch);
+    });
 
     const handleEnrollClick = (course) => {
         if (!user?.id) { toast.error("Please log in to enroll."); return; }
@@ -214,9 +228,11 @@ export default function StudentDashboard() {
 
     const slotStats = (course) => {
         if (!course.slots?.length) return { totalSlots: 0, seatsLeft: 0 };
+        // Only count upcoming (non-expired) slots
+        const upcoming = course.slots.filter(sl => !isSlotExpired(sl));
         return {
-            totalSlots: course.slots.length,
-            seatsLeft: course.slots.reduce((s, sl) => s + Math.max(0, (sl.maxSeats || 0) - (sl.currentEnrolled || 0)), 0),
+            totalSlots: upcoming.length,
+            seatsLeft: upcoming.reduce((s, sl) => s + Math.max(0, (sl.maxSeats || 0) - (sl.currentEnrolled || 0)), 0),
         };
     };
 
@@ -242,14 +258,64 @@ export default function StudentDashboard() {
                 <CategoryBar selected={selectedCategory} onSelect={setSelectedCategory} />
             </div>
 
+            {/* ── Active Search Indicator ── */}
+            {searchQuery && (
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    background: '#1a1a1a',
+                    border: `1px solid ${T.border}`,
+                    borderRadius: 12,
+                    padding: '10px 16px',
+                    marginBottom: 20,
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <Search size={16} color={T.accent} />
+                        <span style={{ fontSize: 14, color: T.text }}>
+                            Results for <strong style={{ color: T.accent }}>"{searchQuery}"</strong> ({filteredCourses.length} {filteredCourses.length === 1 ? 'course' : 'courses'} found)
+                        </span>
+                    </div>
+                    <button
+                        onClick={() => {
+                            const next = new URLSearchParams(searchParams);
+                            next.delete('q');
+                            setSearchParams(next);
+                        }}
+                        style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: T.muted,
+                            fontSize: 13,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            padding: '4px 8px',
+                            borderRadius: 6,
+                            transition: 'color 0.15s, background 0.15s',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.background = '#272727'; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = T.muted; e.currentTarget.style.background = 'transparent'; }}
+                    >
+                        <X size={14} /> Clear search
+                    </button>
+                </div>
+            )}
+
             {/* ── Course grid ── */}
             {filteredCourses.length === 0 ? (
                 <div style={{
-                    textAlign: 'center', padding: '80px 0',
+                    textAlign: 'center', padding: '80px 20px',
                     border: `1.5px dashed ${T.border}`, borderRadius: 16,
                     color: T.muted, fontSize: 14,
                 }}>
-                    No courses found for this category.
+                    <p style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 600, color: T.text }}>
+                        {searchQuery ? `No courses matching "${searchQuery}"` : 'No courses found for this category.'}
+                    </p>
+                    <p style={{ margin: 0, fontSize: 13, color: '#888' }}>
+                        {searchQuery ? 'Try searching by tutor name, topic, or a different keyword.' : 'Check back later for new peer-led sessions.'}
+                    </p>
                 </div>
             ) : (
                 <div style={{
@@ -259,6 +325,7 @@ export default function StudentDashboard() {
                 }}>
                     {filteredCourses.map(course => {
                         const { totalSlots, seatsLeft } = slotStats(course);
+                        const isEnrolled = !!course.enrolledSlotId;
                         return (
                             <CourseCard
                                 key={course.id}
@@ -266,6 +333,7 @@ export default function StudentDashboard() {
                                 totalSlots={totalSlots}
                                 seatsLeft={seatsLeft}
                                 onEnroll={handleEnrollClick}
+                                isEnrolled={isEnrolled}
                             />
                         );
                     })}
@@ -284,7 +352,7 @@ export default function StudentDashboard() {
 }
 
 /* ── YouTube-style dark course card with hover highlighting ── */
-function CourseCard({ course, totalSlots, seatsLeft, onEnroll }) {
+function CourseCard({ course, totalSlots, seatsLeft, onEnroll, isEnrolled }) {
     const [hovered, setHovered] = useState(false);
     const noSeats = totalSlots === 0 || seatsLeft === 0;
 
@@ -424,30 +492,51 @@ function CourseCard({ course, totalSlots, seatsLeft, onEnroll }) {
                 </div>
             </div>
 
-            {/* Enroll button */}
-            <button
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onEnroll(course);
-                }}
-                disabled={noSeats}
-                style={{
-                    marginTop: 10,
-                    width: '100%',
-                    padding: '8px 0',
-                    borderRadius: 8,
-                    border: 'none',
-                    cursor: noSeats ? 'not-allowed' : 'pointer',
-                    background: noSeats ? '#181818' : hovered ? '#00C2CB' : '#1f3434',
-                    color: noSeats ? '#555' : '#fff',
-                    fontSize: 13, fontWeight: 600,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                    transition: 'background 0.2s ease',
-                }}
-            >
-                <PlusCircle size={14} />
-                {noSeats ? 'Fully Booked' : 'Enroll Now'}
-            </button>
+            {/* Enroll / Already-Enrolled button */}
+            {isEnrolled ? (
+                <button
+                    disabled
+                    style={{
+                        marginTop: 10,
+                        width: '100%',
+                        padding: '8px 0',
+                        borderRadius: 8,
+                        border: '1px solid rgba(74,222,128,0.35)',
+                        cursor: 'not-allowed',
+                        background: 'rgba(74,222,128,0.08)',
+                        color: '#4ade80',
+                        fontSize: 13, fontWeight: 700,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    }}
+                >
+                    <CheckCircle size={14} />
+                    Already Enrolled
+                </button>
+            ) : (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onEnroll(course);
+                    }}
+                    disabled={noSeats}
+                    style={{
+                        marginTop: 10,
+                        width: '100%',
+                        padding: '8px 0',
+                        borderRadius: 8,
+                        border: 'none',
+                        cursor: noSeats ? 'not-allowed' : 'pointer',
+                        background: noSeats ? '#181818' : hovered ? '#00C2CB' : '#1f3434',
+                        color: noSeats ? '#555' : '#fff',
+                        fontSize: 13, fontWeight: 600,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        transition: 'background 0.2s ease',
+                    }}
+                >
+                    <PlusCircle size={14} />
+                    {noSeats ? 'Fully Booked' : 'Enroll Now'}
+                </button>
+            )}
         </div>
     );
 }

@@ -20,4 +20,6 @@ public class CourseResponse {
     private String meetLink;
     private Long enrollmentCount;
     private String authorAvatar;
-}
+    /** Non-null when the requesting student is already enrolled in a slot of this course. */
+    private Long enrolledSlotId;
+}

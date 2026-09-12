@@ -1,13 +1,46 @@
 import { useContext, useState, useRef, useEffect } from 'react';
-import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams, Outlet } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api from '../services/api';
-import { Home, BookOpen, Users, CircleUserRound, Search, Bell, Settings, LogOut, ExternalLink, Menu } from 'lucide-react';
+import { Home, BookOpen, Users, CircleUserRound, Search, X, Bell, Settings, LogOut, ExternalLink, Menu } from 'lucide-react';
 
 export default function DashboardLayout() {
     const { user, logout } = useContext(AuthContext);
     const location = useLocation();
     const navigate = useNavigate();
+
+    const [searchParams] = useSearchParams();
+    const urlQuery = searchParams.get('q') || '';
+    const [searchTerm, setSearchTerm] = useState(urlQuery);
+
+    useEffect(() => {
+        setSearchTerm(urlQuery);
+    }, [urlQuery]);
+
+    const handleSearchChange = (val) => {
+        setSearchTerm(val);
+        const trimmed = val.trim();
+        if (trimmed) {
+            navigate(`/discover?q=${encodeURIComponent(trimmed)}`, { replace: true });
+        } else {
+            navigate('/discover', { replace: true });
+        }
+    };
+
+    const handleSearchSubmit = (e) => {
+        if (e) e.preventDefault();
+        const trimmed = searchTerm.trim();
+        if (trimmed) {
+            navigate(`/discover?q=${encodeURIComponent(trimmed)}`, { replace: true });
+        } else {
+            navigate('/discover', { replace: true });
+        }
+    };
+
+    const handleClearSearch = () => {
+        setSearchTerm('');
+        navigate('/discover', { replace: true });
+    };
 
     // YouTube-style collapsible sidebar state (persisted, default collapsed as requested)
     const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -143,12 +176,14 @@ export default function DashboardLayout() {
 
                 {/* Center: YouTube-style search bar */}
                 <div style={{ flex: 1, maxWidth: 640, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ width: '100%', maxWidth: 560, display: 'flex', alignItems: 'center' }}>
+                    <form onSubmit={handleSearchSubmit} style={{ width: '100%', maxWidth: 560, display: 'flex', alignItems: 'center' }}>
                         {/* Input field */}
-                        <div style={{ flex: 1, position: 'relative' }}>
+                        <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
                             <input
                                 type="text"
-                                placeholder="Search"
+                                placeholder="Search courses, tutors, topics..."
+                                value={searchTerm}
+                                onChange={(e) => handleSearchChange(e.target.value)}
                                 className="w-full text-sm focus:outline-none transition-all"
                                 style={{
                                     background: '#121212',
@@ -156,16 +191,40 @@ export default function DashboardLayout() {
                                     border: '1px solid #3f3f3f',
                                     borderRight: 'none',
                                     borderRadius: '40px 0 0 40px',
-                                    padding: '10px 16px',
+                                    padding: '10px 38px 10px 16px',
                                     fontFamily: 'Roboto, Inter, sans-serif',
                                     fontSize: 14,
                                 }}
-                                onFocus={e => { e.target.style.borderColor = '#1c62b9'; e.target.style.background = '#0f0f0f'; }}
+                                onFocus={e => { e.target.style.borderColor = '#00C2CB'; e.target.style.background = '#0f0f0f'; }}
                                 onBlur={e => { e.target.style.borderColor = '#3f3f3f'; e.target.style.background = '#121212'; }}
                             />
+                            {searchTerm && (
+                                <button
+                                    type="button"
+                                    onClick={handleClearSearch}
+                                    style={{
+                                        position: 'absolute',
+                                        right: 12,
+                                        background: 'transparent',
+                                        border: 'none',
+                                        color: '#888888',
+                                        cursor: 'pointer',
+                                        padding: 2,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.color = '#f1f1f1'}
+                                    onMouseLeave={e => e.currentTarget.style.color = '#888888'}
+                                    title="Clear search"
+                                >
+                                    <X size={16} />
+                                </button>
+                            )}
                         </div>
                         {/* Search button */}
                         <button
+                            type="submit"
                             style={{
                                 height: 41,
                                 padding: '0 20px',
@@ -177,13 +236,15 @@ export default function DashboardLayout() {
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 color: '#aaaaaa',
                                 flexShrink: 0,
+                                transition: 'background 0.15s, color 0.15s',
                             }}
-                            onMouseEnter={e => e.currentTarget.style.background = '#3f3f3f'}
-                            onMouseLeave={e => e.currentTarget.style.background = '#272727'}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#3f3f3f'; e.currentTarget.style.color = '#f1f1f1'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = '#272727'; e.currentTarget.style.color = '#aaaaaa'; }}
+                            title="Search"
                         >
                             <Search size={18} />
                         </button>
-                    </div>
+                    </form>
                 </div>
 
                 {/* Right side: Bell & Profile Picture Only */}
