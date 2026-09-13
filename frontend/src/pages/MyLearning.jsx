@@ -1,8 +1,9 @@
-import { useState, useEffect, useContext, useRef } from 'react';
+import { useState, useEffect, useContext, useRef, useMemo } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import api, { getErrorMessage } from '../services/api';
 import { toast } from 'react-hot-toast';
+import { formatTimeRemaining } from '../utils/dateUtils';
 import { 
     BookOpen, Clock, Video, PlayCircle, Star, 
     X, ArrowRight, Award, ChevronLeft, ChevronRight 
@@ -217,24 +218,56 @@ export default function MyLearning() {
         }
     };
 
-    // Filter categories dynamically
-    const categories = ['All', 'Upcoming Sessions', 'Active Courses'];
-    const courseCategories = Array.from(new Set(bookings.map(b => b.course?.categoryName).filter(Boolean)));
-    courseCategories.forEach(c => {
-        if (!categories.includes(c)) categories.push(c);
-    });
+    // Separate active vs past bookings using useMemo
+    const { activeBookings, pastBookings } = useMemo(() => {
+        const now = new Date();
+        const active = [];
+        const past = [];
 
-    const filteredBookings = bookings.filter(b => {
-        if (selectedCategory === 'All') return true;
+        bookings.forEach(b => {
+            const slot = b.slot;
+            const end = slot?.endTime ? new Date(slot.endTime) : null;
+            const sessionStatus = (slot?.sessionStatus || slot?.status || 'SCHEDULED').toUpperCase();
+            const bookingStatus = (b.status || '').toUpperCase();
+
+            // Active Courses: Only include courses that have at least one slot where endTime > now AND status === 'SCHEDULED' (or 'LIVE')
+            const isActive = end && end.getTime() > now.getTime() && (sessionStatus === 'SCHEDULED' || sessionStatus === 'LIVE') && bookingStatus !== 'REFUNDED' && bookingStatus !== 'CANCELLED';
+
+            // Past Courses: Include courses where ALL slots are COMPLETED, CANCELLED, or ABANDONED (or ended / refunded)
+            if (isActive) {
+                active.push(b);
+            } else {
+                past.push(b);
+            }
+        });
+
+        return { activeBookings: active, pastBookings: past };
+    }, [bookings]);
+
+    // Filter categories dynamically
+    const categories = useMemo(() => {
+        const base = ['All', 'Active Courses', 'Past Courses', 'Upcoming Sessions'];
+        const courseCategories = Array.from(new Set(bookings.map(b => b.course?.categoryName).filter(Boolean)));
+        courseCategories.forEach(c => {
+            if (!base.includes(c)) base.push(c);
+        });
+        return base;
+    }, [bookings]);
+
+    const filteredBookings = useMemo(() => {
+        const now = new Date();
+        if (selectedCategory === 'All') return bookings;
+        if (selectedCategory === 'Active Courses') return activeBookings;
+        if (selectedCategory === 'Past Courses' || selectedCategory === 'Past / Completed') return pastBookings;
         if (selectedCategory === 'Upcoming Sessions') {
-            if (!b.slot?.slotDateTime) return false;
-            return new Date(b.slot.slotDateTime) >= new Date();
+            return bookings.filter(b => {
+                const start = b.slot?.startTime ? new Date(b.slot.startTime) : null;
+                const sessionStatus = (b.slot?.sessionStatus || b.slot?.status || 'SCHEDULED').toUpperCase();
+                return start && start >= now && (sessionStatus === 'SCHEDULED' || sessionStatus === 'LIVE');
+            });
         }
-        if (selectedCategory === 'Active Courses') {
-            return (b.status || 'ACTIVE').toUpperCase() === 'ACTIVE';
-        }
-        return b.course?.categoryName === selectedCategory;
-    });
+        return bookings.filter(b => b.course?.categoryName === selectedCategory);
+    }, [bookings, selectedCategory, activeBookings, pastBookings]);
 
     if (loading) {
         return (
@@ -485,18 +518,27 @@ function LearningCourseItem({ booking, onOpenReview }) {
     const [hovered, setHovered] = useState(false);
     const course = booking.course;
     const slot = booking.slot;
-    const sessionStatus = slot?.sessionStatus || slot?.status || 'SCHEDULED';
+    const sessionStatus = (slot?.sessionStatus || slot?.status || 'SCHEDULED').toUpperCase();
+    const bookingStatus = (booking.status || '').toUpperCase();
+    const isAbandoned = sessionStatus === 'ABANDONED' || bookingStatus === 'REFUNDED';
+    const isCompleted = sessionStatus === 'COMPLETED';
     const dateObj = slot?.startTime ? new Date(slot.startTime) : null;
     const endObj = slot?.endTime ? new Date(slot.endTime) : null;
 
     const statusConfig = {
-        SCHEDULED: { label: 'Starting Soon', color: '#facc15', bg: 'rgba(250,204,21,0.12)', dot: '#facc15' },
-        LIVE:      { label: 'Live Now',       color: '#4ade80', bg: 'rgba(74,222,128,0.12)', dot: '#4ade80' },
-        COMPLETED: { label: 'Completed',      color: '#94a3b8', bg: 'rgba(148,163,184,0.1)', dot: '#94a3b8' },
-        CLOSED:    { label: 'Session Ended',  color: '#94a3b8', bg: 'rgba(148,163,184,0.1)', dot: '#94a3b8' },
-        EXPIRED:   { label: 'Expired',        color: '#555',    bg: 'rgba(255,255,255,0.04)', dot: '#555' },
+        SCHEDULED: { label: 'Starting Soon',         color: '#facc15', bg: 'rgba(250,204,21,0.12)', dot: '#facc15' },
+        LIVE:      { label: 'Live Now',              color: '#4ade80', bg: 'rgba(74,222,128,0.12)', dot: '#4ade80' },
+        COMPLETED: { label: 'COMPLETED',             color: '#22c55e', bg: 'rgba(34,197,94,0.1)',   dot: '#22c55e' },
+        CLOSED:    { label: 'Session Ended',         color: '#94a3b8', bg: 'rgba(148,163,184,0.1)', dot: '#94a3b8' },
+        EXPIRED:   { label: 'Expired',               color: '#555',    bg: 'rgba(255,255,255,0.04)', dot: '#555' },
+        ABANDONED: { label: 'ABANDONED - REFUNDED',  color: '#ef4444', bg: 'rgba(239,68,68,0.1)',   dot: '#ef4444' },
     };
-    const sc = statusConfig[sessionStatus] || statusConfig.SCHEDULED;
+    const sc = isAbandoned ? statusConfig.ABANDONED : (statusConfig[sessionStatus] || statusConfig.SCHEDULED);
+
+    const now = new Date();
+    const slotTimeLeft = (!isAbandoned && !isCompleted && sessionStatus === 'SCHEDULED' && dateObj && dateObj > now)
+        ? formatTimeRemaining(dateObj)
+        : null;
 
     return (
         <div
@@ -550,19 +592,51 @@ function LearningCourseItem({ booking, onOpenReview }) {
                 {/* Session status badge (top-right) */}
                 <div style={{
                     position: 'absolute', top: 8, right: 8,
-                    background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)',
-                    border: `1px solid ${sc.dot}44`,
-                    borderRadius: 20, padding: '2px 8px',
+                    background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)',
+                    border: isAbandoned
+                        ? '1px solid #ef4444'
+                        : isCompleted
+                        ? '1px solid rgba(34,197,94,0.4)'
+                        : `1px solid ${sc.dot}44`,
+                    borderRadius: 20, padding: '2px 9px',
                     display: 'flex', alignItems: 'center', gap: 5,
                 }}>
                     <span style={{
-                        width: 6, height: 6, borderRadius: '50%', background: sc.dot,
+                        width: 6, height: 6, borderRadius: '50%',
+                        background: isAbandoned ? '#ef4444' : isCompleted ? '#22c55e' : sc.dot,
                         ...(sessionStatus === 'LIVE' ? { animation: 'pulse 1.5s infinite' } : {}),
                     }} />
-                    <span style={{ fontSize: 10, fontWeight: 700, color: sc.color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                        {sc.label}
+                    <span style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: isAbandoned ? '#ef4444' : isCompleted ? '#22c55e' : sc.color,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em'
+                    }}>
+                        {isAbandoned ? 'ABANDONED - REFUNDED' : isCompleted ? 'COMPLETED' : sc.label}
                     </span>
                 </div>
+
+                {/* Time left for upcoming slot pill (top-left) */}
+                {slotTimeLeft && (
+                    <div style={{
+                        position: 'absolute', top: 8, left: 8,
+                        background: 'rgba(15,15,15,0.85)', backdropFilter: 'blur(6px)',
+                        border: '1px solid rgba(0,194,203,0.4)',
+                        borderRadius: 20, padding: '3px 9px',
+                        display: 'flex', alignItems: 'center', gap: 5,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.6)',
+                    }}>
+                        <span style={{
+                            width: 6, height: 6, borderRadius: '50%',
+                            background: '#00C2CB',
+                            animation: 'pulse 1.8s infinite',
+                        }} />
+                        <span style={{ fontSize: 10, fontWeight: 700, color: '#00C2CB', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                            {slotTimeLeft}
+                        </span>
+                    </div>
+                )}
 
                 {/* Category badge (bottom-left) */}
                 {course?.categoryName && (
@@ -629,25 +703,65 @@ function LearningCourseItem({ booking, onOpenReview }) {
 
                     {/* Session time */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
                             <Clock size={11} color="#00C2CB" />
                             <span style={{ fontSize: 12, color: '#00C2CB', fontWeight: 500 }}>
                                 {dateObj
                                     ? `${dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} ${dateObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}${endObj ? ` – ${endObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}` : ''}`
                                     : 'Session scheduled'}
                             </span>
+                            {slotTimeLeft && (
+                                <span style={{
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    color: '#00C2CB',
+                                    background: 'rgba(0,194,203,0.12)',
+                                    border: '1px solid rgba(0,194,203,0.3)',
+                                    borderRadius: 4,
+                                    padding: '1px 5px',
+                                }}>
+                                    {slotTimeLeft}
+                                </span>
+                            )}
                         </div>
-                        <span style={{ fontSize: 12, color: '#888' }}>
-                            {course?.price === 0 ? 'Free' : course?.price ? `₹${course.price}` : 'Enrolled'}
-                        </span>
+                        {isAbandoned ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: 12, color: '#888', textDecoration: 'line-through' }}>
+                                    {course?.price === 0 ? 'Free' : course?.price ? `₹${course.price}` : 'Enrolled'}
+                                </span>
+                                <span style={{
+                                    fontSize: 10, fontWeight: 700, color: '#ef4444',
+                                    background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)',
+                                    padding: '1px 6px', borderRadius: 4, textTransform: 'uppercase',
+                                }}>
+                                    Refunded
+                                </span>
+                            </div>
+                        ) : (
+                            <span style={{ fontSize: 12, color: '#888' }}>
+                                {course?.price === 0 ? 'Free' : course?.price ? `₹${course.price}` : 'Enrolled'}
+                            </span>
+                        )}
                     </div>
                 </div>
             </div>
 
             {/* Action Row — status-aware */}
             <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+                {/* ABANDONED / REFUNDED: Show clear Escrow Refund status badge */}
+                {isAbandoned && (
+                    <div style={{
+                        flex: 1, padding: '8px 12px', borderRadius: 8,
+                        background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        fontSize: 12, color: '#ef4444', fontWeight: 600,
+                    }}>
+                        <span>💰 Escrow Payment Refunded to Wallet</span>
+                    </div>
+                )}
+
                 {/* Meet Link Button — only shown for SCHEDULED and LIVE */}
-                {sessionStatus === 'SCHEDULED' && (
+                {!isAbandoned && sessionStatus === 'SCHEDULED' && (
                     <button
                         disabled
                         style={{
@@ -662,7 +776,7 @@ function LearningCourseItem({ booking, onOpenReview }) {
                     </button>
                 )}
 
-                {sessionStatus === 'LIVE' && course?.meetLink && (
+                {!isAbandoned && sessionStatus === 'LIVE' && course?.meetLink && (
                     <button
                         onClick={() => window.open(course.meetLink, '_blank')}
                         style={{
@@ -681,19 +795,20 @@ function LearningCourseItem({ booking, onOpenReview }) {
                 )}
 
                 {/* CLOSED/EXPIRED/COMPLETED: meet link hidden, review button shown for CLOSED & COMPLETED */}
-                {(sessionStatus === 'CLOSED' || sessionStatus === 'EXPIRED' || sessionStatus === 'COMPLETED') && (
+                {!isAbandoned && (sessionStatus === 'CLOSED' || sessionStatus === 'EXPIRED' || sessionStatus === 'COMPLETED') && (
                     <div style={{
                         flex: 1, padding: '8px 0', borderRadius: 8,
-                        background: '#141414', border: '1px solid #2a2a2a',
+                        background: isCompleted ? 'rgba(34,197,94,0.08)' : '#141414',
+                        border: isCompleted ? '1px solid rgba(34,197,94,0.2)' : '1px solid #2a2a2a',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 12, color: '#555', fontWeight: 500,
+                        fontSize: 12, color: isCompleted ? '#22c55e' : '#555', fontWeight: 600,
                     }}>
-                        Session {sessionStatus === 'COMPLETED' ? 'Completed' : sessionStatus === 'CLOSED' ? 'Closed' : 'Expired'}
+                        Session {sessionStatus === 'COMPLETED' ? 'COMPLETED' : sessionStatus === 'CLOSED' ? 'Closed' : 'Expired'}
                     </div>
                 )}
 
                 {/* Review button — for CLOSED and COMPLETED slots */}
-                {(sessionStatus === 'CLOSED' || sessionStatus === 'COMPLETED') && (
+                {!isAbandoned && (sessionStatus === 'CLOSED' || sessionStatus === 'COMPLETED') && (
                     <button
                         onClick={onOpenReview}
                         title="Leave Feedback & Rating"

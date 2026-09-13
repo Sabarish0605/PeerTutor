@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: 'http://localhost:8080/api', // Your Spring Boot URL
+    baseURL: import.meta.env.VITE_API_BASE_URL || 'https://hive-backend-gjvd.onrender.com/api',
 });
 
 // Automatically attach the JWT token to every request if the user is logged in

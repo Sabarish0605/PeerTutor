@@ -157,3 +157,61 @@ export function getCourseSlotStats(course) {
     };
 }
 
+/**
+ * Finds the earliest upcoming scheduled slot for a course.
+ *
+ * @param {object} course
+ * @returns {object|null}
+ */
+export function getNextUpcomingSlot(course) {
+    if (!course?.slots || !Array.isArray(course.slots)) return null;
+    const now = Date.now();
+    const upcoming = course.slots
+        .filter(s => {
+            const start = parseSafeDate(s.startTime || s.slotDateTime);
+            const status = s.sessionStatus || s.status || 'SCHEDULED';
+            return start && start.getTime() > now && (status === 'SCHEDULED' || status === 'LIVE');
+        })
+        .sort((a, b) => {
+            const aTime = parseSafeDate(a.startTime || a.slotDateTime).getTime();
+            const bTime = parseSafeDate(b.startTime || b.slotDateTime).getTime();
+            return aTime - bTime;
+        });
+
+    return upcoming.length > 0 ? upcoming[0] : null;
+}
+
+/**
+ * Formats time remaining until a target date/time into a human-readable countdown string.
+ * e.g., "Starts in 45m", "Starts in 2h 15m", "Starts in 3d 4h", "Starting now"
+ *
+ * @param {any} targetDate
+ * @returns {string}
+ */
+export function formatTimeRemaining(targetDate) {
+    const target = parseSafeDate(targetDate);
+    if (!target) return '';
+    const diffMs = target.getTime() - Date.now();
+    if (diffMs <= 0) return 'Starting now';
+
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffDays > 0) {
+        const remHours = diffHours % 24;
+        return remHours > 0 ? `Starts in ${diffDays}d ${remHours}h` : `Starts in ${diffDays}d`;
+    }
+
+    if (diffHours > 0) {
+        const remMinutes = diffMinutes % 60;
+        return remMinutes > 0 ? `Starts in ${diffHours}h ${remMinutes}m` : `Starts in ${diffHours}h`;
+    }
+
+    if (diffMinutes > 0) {
+        return `Starts in ${diffMinutes}m`;
+    }
+
+    return 'Starts in < 1m';
+}
+

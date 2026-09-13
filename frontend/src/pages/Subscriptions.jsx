@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import api, { getErrorMessage } from '../services/api';
 import { toast } from 'react-hot-toast';
 import EnrollmentModal from '../components/EnrollmentModal';
-import { getCourseSlotStats } from '../utils/dateUtils';
+import { getCourseSlotStats, getNextUpcomingSlot, formatTimeRemaining } from '../utils/dateUtils';
 import { 
     Users, Clock, PlayCircle, PlusCircle, CheckCircle2, 
     Sparkles, ArrowRight, Compass, Filter
@@ -376,6 +376,9 @@ function SubscriptionCourseCard({ course, onEnroll }) {
         }
     };
 
+    const nextUpcomingSlot = getNextUpcomingSlot(course);
+    const timeRemaining = nextUpcomingSlot ? formatTimeRemaining(nextUpcomingSlot.startTime || nextUpcomingSlot.slotDateTime) : null;
+
     return (
         <div
             onClick={handleCardClick}
@@ -427,6 +430,27 @@ function SubscriptionCourseCard({ course, onEnroll }) {
                     </div>
                 )}
 
+                {/* Time left for upcoming slot pill (top-right) */}
+                {timeRemaining && (
+                    <div style={{
+                        position: 'absolute', top: 8, right: 8,
+                        background: 'rgba(15,15,15,0.85)', backdropFilter: 'blur(6px)',
+                        border: '1px solid rgba(0,194,203,0.4)',
+                        borderRadius: 20, padding: '3px 9px',
+                        display: 'flex', alignItems: 'center', gap: 5,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.6)',
+                    }}>
+                        <span style={{
+                            width: 6, height: 6, borderRadius: '50%',
+                            background: '#00C2CB',
+                            animation: 'pulse 1.8s infinite',
+                        }} />
+                        <span style={{ fontSize: 10, fontWeight: 700, color: '#00C2CB', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                            {timeRemaining}
+                        </span>
+                    </div>
+                )}
+
                 {/* Category chip on thumbnail */}
                 {course.categoryName && (
                     <span style={{
@@ -453,6 +477,7 @@ function SubscriptionCourseCard({ course, onEnroll }) {
                         }}
                         onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
                         onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                        title="Watch Demo / Preview"
                     >
                         <PlayCircle size={18} />
                     </button>
@@ -496,7 +521,7 @@ function SubscriptionCourseCard({ course, onEnroll }) {
 
                     {/* Slots + Price */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
                             <Clock
                                 size={11}
                                 color={hasNoUpcoming ? '#666666' : isSoldOut ? '#ff4444' : '#aaaaaa'}
@@ -512,6 +537,19 @@ function SubscriptionCourseCard({ course, onEnroll }) {
                                     ? 'Fully booked'
                                     : `${totalUpcomingSlots} slot${totalUpcomingSlots !== 1 ? 's' : ''} · ${seatsLeft} left`}
                             </span>
+                            {timeRemaining && (
+                                <span style={{
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    color: '#00C2CB',
+                                    background: 'rgba(0,194,203,0.12)',
+                                    border: '1px solid rgba(0,194,203,0.3)',
+                                    borderRadius: 4,
+                                    padding: '1px 5px',
+                                }}>
+                                    {timeRemaining}
+                                </span>
+                            )}
                         </div>
                         <span style={{ fontSize: 13, fontWeight: 700, color: '#00C2CB', whiteSpace: 'nowrap' }}>
                             {course.price === 0 ? 'Free' : `₹${course.price}`}

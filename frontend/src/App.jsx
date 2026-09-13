@@ -22,7 +22,31 @@ function App() {
       <AuthProvider>
         <Router>
 
-              <Toaster position="bottom-right" />
+              <Toaster
+                  position="bottom-right"
+                  toastOptions={{
+                      style: {
+                          background: '#1a1a1a',
+                          color: '#f1f1f1',
+                          border: '1px solid #333333',
+                          fontSize: '13px',
+                          borderRadius: '10px',
+                          padding: '10px 16px',
+                      },
+                      success: {
+                          iconTheme: {
+                              primary: '#00C2CB',
+                              secondary: '#1a1a1a',
+                          },
+                      },
+                      error: {
+                          iconTheme: {
+                              primary: '#ef4444',
+                              secondary: '#1a1a1a',
+                          },
+                      },
+                  }}
+              />
 
               <main className="flex-grow w-full">
                 <Routes>

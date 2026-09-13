@@ -1,10 +1,10 @@
-import { useState, useEffect, useContext, useRef } from 'react';
+import { useState, useEffect, useContext, useRef, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api, { getErrorMessage } from '../services/api';
 import { toast } from 'react-hot-toast';
 import EnrollmentModal from '../components/EnrollmentModal';
-import { isSlotExpired, getCourseSlotStats } from '../utils/dateUtils';
+import { isSlotExpired, getCourseSlotStats, getNextUpcomingSlot, formatTimeRemaining } from '../utils/dateUtils';
 import { PlayCircle, PlusCircle, Clock, ChevronRight, ChevronLeft, CheckCircle, Search, X } from 'lucide-react';
 
 const T = {
@@ -192,18 +192,42 @@ export default function StudentDashboard() {
 
     useEffect(() => { fetchMarketplaceData(); }, []);
 
-    const filteredCourses = courses.filter(c => {
-        const matchesCategory = selectedCategory === '' || c.categoryName === selectedCategory;
-        if (!matchesCategory) return false;
+    const sortedMarketplaceCourses = useMemo(() => {
+        return courses
+            .filter(course => {
+                // Must have at least one active scheduled slot in the future
+                const hasActiveSlot = course.slots && course.slots.some(s => {
+                    const start = s.startTime ? new Date(s.startTime) : null;
+                    const status = s.sessionStatus || s.status;
+                    return start && start > new Date() && status === 'SCHEDULED';
+                });
+                if (!hasActiveSlot) return false;
 
-        if (!searchQuery) return true;
-        const q = searchQuery.toLowerCase();
-        const titleMatch = c.title?.toLowerCase().includes(q);
-        const descMatch = c.description?.toLowerCase().includes(q);
-        const catMatch = c.categoryName?.toLowerCase().includes(q);
-        const tutorMatch = c.tutorName?.toLowerCase().includes(q);
-        return Boolean(titleMatch || descMatch || catMatch || tutorMatch);
-    });
+                const matchesCategory = selectedCategory === '' || course.categoryName === selectedCategory;
+                if (!matchesCategory) return false;
+
+                if (!searchQuery) return true;
+                const q = searchQuery.toLowerCase();
+                const titleMatch = course.title?.toLowerCase().includes(q);
+                const descMatch = course.description?.toLowerCase().includes(q);
+                const catMatch = course.categoryName?.toLowerCase().includes(q);
+                const tutorMatch = course.tutorName?.toLowerCase().includes(q);
+                return Boolean(titleMatch || descMatch || catMatch || tutorMatch);
+            })
+            .sort((a, b) => {
+                const getNextClass = (course) => {
+                    const futureSlots = (course.slots || [])
+                        .filter(s => {
+                            const start = s.startTime ? new Date(s.startTime) : null;
+                            const status = s.sessionStatus || s.status;
+                            return start && start > new Date() && status === 'SCHEDULED';
+                        })
+                        .map(s => new Date(s.startTime).getTime());
+                    return futureSlots.length > 0 ? Math.min(...futureSlots) : Infinity;
+                };
+                return getNextClass(a) - getNextClass(b);
+            });
+    }, [courses, selectedCategory, searchQuery]);
 
     const handleEnrollClick = (course) => {
         if (!user?.id) { toast.error("Please log in to enroll."); return; }
@@ -273,7 +297,7 @@ export default function StudentDashboard() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <Search size={16} color={T.accent} />
                         <span style={{ fontSize: 14, color: T.text }}>
-                            Results for <strong style={{ color: T.accent }}>"{searchQuery}"</strong> ({filteredCourses.length} {filteredCourses.length === 1 ? 'course' : 'courses'} found)
+                            Results for <strong style={{ color: T.accent }}>"{searchQuery}"</strong> ({sortedMarketplaceCourses.length} {sortedMarketplaceCourses.length === 1 ? 'course' : 'courses'} found)
                         </span>
                     </div>
                     <button
@@ -304,7 +328,7 @@ export default function StudentDashboard() {
             )}
 
             {/* ── Course grid ── */}
-            {filteredCourses.length === 0 ? (
+            {sortedMarketplaceCourses.length === 0 ? (
                 <div style={{
                     textAlign: 'center', padding: '80px 20px',
                     border: `1.5px dashed ${T.border}`, borderRadius: 16,
@@ -323,7 +347,7 @@ export default function StudentDashboard() {
                     gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))',
                     gap: '20px 16px',
                 }}>
-                    {filteredCourses.map(course => {
+                    {sortedMarketplaceCourses.map(course => {
                         const isEnrolled = !!course.enrolledSlotId;
                         return (
                             <CourseCard
@@ -359,6 +383,9 @@ function CourseCard({ course, onEnroll, isEnrolled }) {
             onEnroll(course);
         }
     };
+
+    const nextUpcomingSlot = getNextUpcomingSlot(course);
+    const timeRemaining = nextUpcomingSlot ? formatTimeRemaining(nextUpcomingSlot.startTime || nextUpcomingSlot.slotDateTime) : null;
 
     return (
         <div
@@ -408,6 +435,27 @@ function CourseCard({ course, onEnroll, isEnrolled }) {
                         letterSpacing: '0.08em', textTransform: 'uppercase',
                     }}>
                         No Preview
+                    </div>
+                )}
+
+                {/* Time left for upcoming slot pill (top-right) */}
+                {timeRemaining && (
+                    <div style={{
+                        position: 'absolute', top: 8, right: 8,
+                        background: 'rgba(15,15,15,0.85)', backdropFilter: 'blur(6px)',
+                        border: '1px solid rgba(0,194,203,0.4)',
+                        borderRadius: 20, padding: '3px 9px',
+                        display: 'flex', alignItems: 'center', gap: 5,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.6)',
+                    }}>
+                        <span style={{
+                            width: 6, height: 6, borderRadius: '50%',
+                            background: '#00C2CB',
+                            animation: 'pulse 1.8s infinite',
+                        }} />
+                        <span style={{ fontSize: 10, fontWeight: 700, color: '#00C2CB', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                            {timeRemaining}
+                        </span>
                     </div>
                 )}
 
@@ -477,7 +525,7 @@ function CourseCard({ course, onEnroll, isEnrolled }) {
 
                     {/* Slots + price */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
                             <Clock
                                 size={11}
                                 color={hasNoUpcoming ? '#666666' : isSoldOut ? '#ff4444' : '#aaaaaa'}
@@ -493,6 +541,19 @@ function CourseCard({ course, onEnroll, isEnrolled }) {
                                     ? 'Fully booked'
                                     : `${totalUpcomingSlots} slot${totalUpcomingSlots !== 1 ? 's' : ''} · ${seatsLeft} left`}
                             </span>
+                            {timeRemaining && (
+                                <span style={{
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    color: '#00C2CB',
+                                    background: 'rgba(0,194,203,0.12)',
+                                    border: '1px solid rgba(0,194,203,0.3)',
+                                    borderRadius: 4,
+                                    padding: '1px 5px',
+                                }}>
+                                    {timeRemaining}
+                                </span>
+                            )}
                         </div>
                         <span style={{ fontSize: 13, fontWeight: 700, color: '#00C2CB', whiteSpace: 'nowrap' }}>
                             {course.price === 0 ? 'Free' : `₹${course.price}`}

@@ -9,6 +9,7 @@ import {
 import { AuthContext } from '../context/AuthContext';
 import api, { getErrorMessage } from '../services/api';
 import { toast } from 'react-hot-toast';
+import ConfirmModal from '../components/ConfirmModal';
 
 const TIMEZONE_OPTIONS = [
     { value: 'Asia/Kolkata (IST, UTC+5:30)', label: 'Asia/Kolkata (IST, UTC+5:30) — Chennai, Mumbai, Delhi' },
@@ -67,6 +68,7 @@ export default function ProfileSettings() {
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [changingPassword, setChangingPassword] = useState(false);
+    const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
     // Delete Account State
     const [deletePassword, setDeletePassword] = useState('');
@@ -221,7 +223,11 @@ export default function ProfileSettings() {
     };
 
     const handleLogoutAllDevices = () => {
-        if (!window.confirm("Are you sure you want to log out of all active devices? You will be redirected to the login page.")) return;
+        setLogoutConfirmOpen(true);
+    };
+
+    const handleConfirmLogoutAll = () => {
+        setLogoutConfirmOpen(false);
         setSessions(prev => prev.filter(s => s.isCurrent));
         toast.success("All other sessions terminated.");
         setTimeout(() => {
@@ -1340,6 +1346,16 @@ Support: help@peertutor.io
                     </div>
                 </div>
             )}
+            {/* Confirm Logout Modal */}
+            <ConfirmModal
+                isOpen={logoutConfirmOpen}
+                onClose={() => setLogoutConfirmOpen(false)}
+                onConfirm={handleConfirmLogoutAll}
+                title="Log Out of All Devices"
+                message="Are you sure you want to log out of all active devices? You will be redirected to the login page."
+                confirmText="Log Out All"
+                confirmVariant="warning"
+            />
         </div>
     );
 }

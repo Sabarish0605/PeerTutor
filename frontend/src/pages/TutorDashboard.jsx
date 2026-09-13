@@ -1,9 +1,11 @@
-import { useContext, useState, useEffect } from 'react';
+import { useContext, useState, useEffect, useMemo } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import api, { getErrorMessage } from '../services/api';
 import { toast } from 'react-hot-toast';
 import { parseSafeDate, formatSafeDate, formatSafeTimeRange } from '../utils/dateUtils';
+import ConfirmModal from '../components/ConfirmModal';
+import CourseCard from '../components/CourseCard';
 import { 
     Plus, X, Edit2, ChevronDown, Trash2, Upload, PlayCircle, 
     Users, Eye, Sparkles, BookOpen, Star, Video, Check, ExternalLink,
@@ -19,7 +21,7 @@ export default function TutorDashboard() {
         "Data Science", "Hardware & Systems"
     ];
 
-    const [activeTab, setActiveTab] = useState('courses'); // 'courses' | 'subscribers' | 'profile'
+    const [activeTab, setActiveTab] = useState('courses'); // 'courses' | 'past' | 'profile'
     const [profileData, setProfileData] = useState(null);
     const [myCourses, setMyCourses] = useState([]);
     const [isCreating, setIsCreating] = useState(false);
@@ -28,6 +30,18 @@ export default function TutorDashboard() {
     const [selectedCourseRoster, setSelectedCourseRoster] = useState(null);
     const [rosterData, setRosterData] = useState([]);
     const [loadingRoster, setLoadingRoster] = useState(false);
+
+    // Confirm Modal state (replaces native window.confirm)
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        confirmVariant: 'danger',
+        loading: false,
+        onConfirm: () => {},
+    });
 
     // Profile edit state
     const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -134,26 +148,52 @@ export default function TutorDashboard() {
         }
     };
 
-    const handleCloseSession = async (slotId) => {
-        if (!window.confirm('Close this session? Students will be able to leave reviews.')) return;
-        try {
-            await api.put(`/slots/${slotId}/close`);
-            toast.success('Session closed. Reviews unlocked for enrolled students.');
-            fetchStudioData();
-        } catch (error) {
-            toast.error(getErrorMessage(error, 'Failed to close session.'));
-        }
+    const handleCloseSession = (slotId) => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Close Session',
+            message: 'Are you sure you want to close this live session? Once closed, students will be able to leave reviews.',
+            confirmText: 'Close Session',
+            cancelText: 'Keep Live',
+            confirmVariant: 'warning',
+            loading: false,
+            onConfirm: async () => {
+                try {
+                    setConfirmModal(prev => ({ ...prev, loading: true }));
+                    await api.put(`/slots/${slotId}/close`);
+                    toast.success('Session closed. Reviews unlocked for enrolled students.');
+                    await fetchStudioData();
+                    setConfirmModal(prev => ({ ...prev, isOpen: false, loading: false }));
+                } catch (error) {
+                    setConfirmModal(prev => ({ ...prev, loading: false }));
+                    toast.error(getErrorMessage(error, 'Failed to close session.'));
+                }
+            },
+        });
     };
 
-    const handleDeleteCourse = async (courseId) => {
-        if (!window.confirm("Are you sure you want to delete this course?")) return;
-        try {
-            await api.delete(`/courses/${courseId}/user/${user.id}`);
-            setMyCourses(myCourses.filter(c => c.id !== courseId));
-            toast.success('Course deleted successfully.');
-        } catch (error) {
-            toast.error(getErrorMessage(error, 'Failed to delete course.'));
-        }
+    const handleDeleteCourse = (courseId, courseTitle = 'this course') => {
+        setConfirmModal({
+            isOpen: true,
+            title: 'Delete Course',
+            message: `Are you sure you want to delete "${courseTitle}"? This will permanently remove all scheduled sessions and course data.`,
+            confirmText: 'Delete Course',
+            cancelText: 'Cancel',
+            confirmVariant: 'danger',
+            loading: false,
+            onConfirm: async () => {
+                try {
+                    setConfirmModal(prev => ({ ...prev, loading: true }));
+                    await api.delete(`/courses/${courseId}/user/${user.id}`);
+                    setMyCourses(prev => prev.filter(c => c.id !== courseId));
+                    toast.success('Course deleted successfully.');
+                    setConfirmModal(prev => ({ ...prev, isOpen: false, loading: false }));
+                } catch (error) {
+                    setConfirmModal(prev => ({ ...prev, loading: false }));
+                    toast.error(getErrorMessage(error, 'Failed to delete course.'));
+                }
+            },
+        });
     };
 
     const handleViewRoster = async (course) => {
@@ -292,6 +332,32 @@ export default function TutorDashboard() {
         }
     };
 
+    // Course Filtering Logic: Active vs Past Courses
+    const { activeCourses, pastCourses } = useMemo(() => {
+        const now = new Date();
+        const active = [];
+        const past = [];
+
+        (myCourses || []).forEach(course => {
+            const slots = course.slots || [];
+            // Active Courses: Only include courses that have at least one slot where endTime > now AND status === 'SCHEDULED' (or 'LIVE')
+            const hasActiveSlot = slots.some(slot => {
+                const end = parseSafeDate(slot.endTime);
+                const status = (slot.sessionStatus || slot.status || 'SCHEDULED').toUpperCase();
+                return end && end.getTime() > now.getTime() && (status === 'SCHEDULED' || status === 'LIVE');
+            });
+
+            // Past Courses: Courses where ALL slots are COMPLETED, CANCELLED, ABANDONED, or in the past
+            if (hasActiveSlot) {
+                active.push(course);
+            } else {
+                past.push(course);
+            }
+        });
+
+        return { activeCourses: active, pastCourses: past };
+    }, [myCourses]);
+
     // Derived statistics
     const totalSubscribers = profileData?.subscribersCount ?? 0;
     const totalCourses = myCourses.length;
@@ -299,6 +365,20 @@ export default function TutorDashboard() {
     const totalEnrolledStudents = myCourses.reduce((sum, c) => {
         return sum + (c.slots?.reduce((s, sl) => s + (sl.currentEnrolled || 0), 0) || 0);
     }, 0);
+
+    // Reusable Course Card Renderer
+    const renderCourseCard = (course, isPast = false) => (
+        <CourseCard
+            key={course.id}
+            course={course}
+            isPast={isPast}
+            onStartSession={handleStartSession}
+            onCloseSession={handleCloseSession}
+            onViewRoster={handleViewRoster}
+            onEditCourse={handleOpenEdit}
+            onDeleteCourse={handleDeleteCourse}
+        />
+    );
 
     return (
         <div style={{ background: '#0f0f0f', minHeight: '100vh', color: '#f1f1f1', paddingBottom: 80, fontFamily: 'Roboto, Inter, sans-serif' }}>
@@ -456,8 +536,8 @@ export default function TutorDashboard() {
                     marginTop: 20, marginBottom: 28,
                 }}>
                     {[
-                        { key: 'courses', label: `Courses (${myCourses.length})` },
-                        { key: 'subscribers', label: `Subscribers (${totalSubscribers})` },
+                        { key: 'courses', label: `Courses (${activeCourses.length})` },
+                        { key: 'past', label: `Past Courses (${pastCourses.length})` },
                         { key: 'profile', label: 'Profile Details' },
                     ].map(tab => (
                         <button
@@ -792,21 +872,21 @@ export default function TutorDashboard() {
                     <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                             <div>
-                                <h2 style={{ fontSize: 18, fontWeight: 600, color: '#f1f1f1', margin: 0 }}>Your Published Courses</h2>
+                                <h2 style={{ fontSize: 18, fontWeight: 600, color: '#f1f1f1', margin: 0 }}>Active Courses</h2>
                                 <p style={{ fontSize: 12, color: '#888', margin: '4px 0 0' }}>Manage course details, schedule blocks, view enrolled students, or remove listings.</p>
                             </div>
                             <span style={{ fontSize: 12, color: '#00C2CB', background: 'rgba(0,194,203,0.1)', padding: '4px 12px', borderRadius: 20, fontWeight: 600 }}>
-                                {myCourses.length} Courses
+                                {activeCourses.length} Active Course{activeCourses.length !== 1 ? 's' : ''}
                             </span>
                         </div>
 
-                        {myCourses.length === 0 ? (
+                        {activeCourses.length === 0 ? (
                             <div style={{
                                 textAlign: 'center', padding: '60px 20px',
                                 background: '#141414', borderRadius: 16, border: '1px dashed #333',
                             }}>
                                 <BookOpen size={40} color="#555" style={{ margin: '0 auto 12px' }} />
-                                <h3 style={{ fontSize: 16, fontWeight: 600, color: '#eee', margin: '0 0 6px' }}>No courses published yet</h3>
+                                <h3 style={{ fontSize: 16, fontWeight: 600, color: '#eee', margin: '0 0 6px' }}>No active courses published yet</h3>
                                 <p style={{ fontSize: 13, color: '#888', margin: '0 0 16px', maxWidth: 400, marginLeft: 'auto', marginRight: 'auto' }}>
                                     Start tutoring on Hive by publishing your first course. Share your knowledge with peers!
                                 </p>
@@ -826,248 +906,45 @@ export default function TutorDashboard() {
                                 gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
                                 gap: 20,
                             }}>
-                                {myCourses.map(course => (
-                                    <div
-                                        key={course.id}
-                                        style={{
-                                            background: '#1b1b1b',
-                                            border: '1px solid #2d2d2d',
-                                            borderRadius: 16,
-                                            overflow: 'hidden',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            justifyContent: 'space-between',
-                                            transition: 'border-color 0.2s, transform 0.2s',
-                                        }}
-                                        onMouseEnter={e => {
-                                            e.currentTarget.style.borderColor = '#444';
-                                            e.currentTarget.style.transform = 'translateY(-2px)';
-                                        }}
-                                        onMouseLeave={e => {
-                                            e.currentTarget.style.borderColor = '#2d2d2d';
-                                            e.currentTarget.style.transform = 'none';
-                                        }}
-                                    >
-                                        <div>
-                                            {/* Thumbnail block */}
-                                            <div style={{ position: 'relative', width: '100%', paddingTop: '56.25%', background: '#111', overflow: 'hidden' }}>
-                                                {course.thumbnailUrl ? (
-                                                    <img
-                                                        src={course.thumbnailUrl}
-                                                        alt={course.title}
-                                                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-                                                    />
-                                                ) : (
-                                                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 11, fontWeight: 600 }}>
-                                                        No Preview
-                                                    </div>
-                                                )}
-                                                {course.categoryName && (
-                                                    <span style={{
-                                                        position: 'absolute', bottom: 8, left: 8,
-                                                        background: 'rgba(0,0,0,0.8)', color: '#f1f1f1',
-                                                        fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 4,
-                                                    }}>
-                                                        {course.categoryName}
-                                                    </span>
-                                                )}
-                                                <span style={{
-                                                    position: 'absolute', top: 8, right: 8,
-                                                    background: 'rgba(0,194,203,0.9)', color: '#0f0f0f',
-                                                    fontSize: 12, fontWeight: 700, padding: '3px 9px', borderRadius: 6,
-                                                }}>
-                                                    ₹{course.price}
-                                                </span>
-                                            </div>
-
-                                            {/* Info */}
-                                            <div style={{ padding: 16 }}>
-                                                <h3 style={{
-                                                    fontSize: 15, fontWeight: 600, color: '#f1f1f1', margin: '0 0 8px',
-                                                    lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-                                                }}>
-                                                    {course.title}
-                                                </h3>
-
-                                                {/* Slots summary with session controls */}
-                                                <div style={{ background: '#141414', borderRadius: 8, padding: 10, border: '1px solid #252525' }}>
-                                                    <span style={{ fontSize: 10, color: '#888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>
-                                                        Sessions ({course.slots?.length || 0})
-                                                    </span>
-                                                    {course.slots && course.slots.length > 0 ? (
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 200, overflowY: 'auto' }}>
-                                                            {course.slots.map(slot => {
-                                                                const start = parseSafeDate(slot.startTime);
-                                                                const end   = parseSafeDate(slot.endTime);
-                                                                const now = new Date();
-                                                                const status = slot.sessionStatus || slot.status || 'SCHEDULED';
-                                                                const canStart = status === 'SCHEDULED' && start && (start - now) <= 15 * 60 * 1000;
-                                                                const statusColors = {
-                                                                    SCHEDULED: { bg: 'rgba(250,204,21,0.15)', color: '#facc15' },
-                                                                    LIVE:      { bg: 'rgba(74,222,128,0.15)', color: '#4ade80' },
-                                                                    COMPLETED: { bg: 'rgba(148,163,184,0.15)', color: '#94a3b8' },
-                                                                    CLOSED:    { bg: 'rgba(148,163,184,0.15)', color: '#94a3b8' },
-                                                                    EXPIRED:   { bg: 'rgba(239,68,68,0.1)',   color: '#888' },
-                                                                };
-                                                                const sc = statusColors[status] || { bg: 'rgba(148,163,184,0.15)', color: '#94a3b8' };
-                                                                return (
-                                                                    <div key={slot.id} style={{ background: '#1a1a1a', borderRadius: 6, padding: 8, border: '1px solid #2a2a2a' }}>
-                                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                                                                            <span style={{ fontSize: 11, color: '#ccc' }}>
-                                                                                {start ? formatSafeDate(start, { month: 'short', day: 'numeric' }) : '?'}
-                                                                                {' '}
-                                                                                {formatSafeTimeRange(slot.startTime, slot.endTime)}
-                                                                            </span>
-                                                                            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: sc.bg, color: sc.color }}>
-                                                                                {status}
-                                                                            </span>
-                                                                        </div>
-                                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                                            <span style={{ fontSize: 11, color: slot.currentEnrolled >= slot.maxSeats ? '#ff5555' : '#4ade80', fontWeight: 600 }}>
-                                                                                {slot.currentEnrolled}/{slot.maxSeats} enrolled
-                                                                            </span>
-                                                                            <div style={{ display: 'flex', gap: 6 }}>
-                                                                                {status === 'SCHEDULED' && (
-                                                                                    <button
-                                                                                        onClick={() => handleStartSession(slot.id)}
-                                                                                        disabled={!canStart}
-                                                                                        title={canStart ? 'Start session now' : 'Available 15 min before start'}
-                                                                                        style={{
-                                                                                            fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 6, border: 'none',
-                                                                                            cursor: canStart ? 'pointer' : 'not-allowed',
-                                                                                            background: canStart ? 'rgba(74,222,128,0.2)' : '#1c1c1c',
-                                                                                            color: canStart ? '#4ade80' : '#555',
-                                                                                            transition: 'all 0.15s',
-                                                                                        }}
-                                                                                    >
-                                                                                        ▶ Start
-                                                                                    </button>
-                                                                                )}
-                                                                                {status === 'LIVE' && (
-                                                                                    <button
-                                                                                        onClick={() => handleCloseSession(slot.id)}
-                                                                                        style={{
-                                                                                            fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 6, border: 'none',
-                                                                                            cursor: 'pointer',
-                                                                                            background: 'rgba(239,68,68,0.2)', color: '#ef4444',
-                                                                                            animation: 'pulse 1.5s infinite',
-                                                                                        }}
-                                                                                    >
-                                                                                        ■ Close
-                                                                                    </button>
-                                                                                )}
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    ) : (
-                                                        <span style={{ fontSize: 11, color: '#666', fontStyle: 'italic' }}>No scheduled slots
-</span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Actions */}
-                                        <div style={{ padding: '0 16px 16px', display: 'flex', gap: 8 }}>
-                                            <button
-                                                onClick={() => handleViewRoster(course)}
-                                                style={{
-                                                    flex: 1, padding: '8px 0', borderRadius: 8,
-                                                    background: '#282828', border: '1px solid #383838',
-                                                    color: '#f1f1f1', fontSize: 12, fontWeight: 600,
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                                                    cursor: 'pointer', transition: 'background 0.15s',
-                                                }}
-                                                onMouseEnter={e => e.currentTarget.style.background = '#333'}
-                                                onMouseLeave={e => e.currentTarget.style.background = '#282828'}
-                                            >
-                                                <Eye size={14} color="#00C2CB" />
-                                                <span>Students</span>
-                                            </button>
-
-                                            <button
-                                                onClick={() => handleOpenEdit(course)}
-                                                style={{
-                                                    flex: 1, padding: '8px 0', borderRadius: 8,
-                                                    background: '#282828', border: '1px solid #383838',
-                                                    color: '#f1f1f1', fontSize: 12, fontWeight: 600,
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                                                    cursor: 'pointer', transition: 'background 0.15s',
-                                                }}
-                                                onMouseEnter={e => e.currentTarget.style.background = '#333'}
-                                                onMouseLeave={e => e.currentTarget.style.background = '#282828'}
-                                                title="Edit Course"
-                                            >
-                                                <Edit2 size={14} color="#3ea6ff" />
-                                                <span>Edit</span>
-                                            </button>
-
-                                            <button
-                                                onClick={() => handleDeleteCourse(course.id)}
-                                                style={{
-                                                    padding: '8px 14px', borderRadius: 8,
-                                                    background: 'rgba(255,85,85,0.1)', border: '1px solid rgba(255,85,85,0.2)',
-                                                    color: '#ff5555', fontSize: 12, fontWeight: 600,
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-                                                    cursor: 'pointer', transition: 'background 0.15s',
-                                                }}
-                                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,85,85,0.2)'}
-                                                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,85,85,0.1)'}
-                                                title="Delete Course"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
+                                {activeCourses.map(course => renderCourseCard(course, false))}
                             </div>
                         )}
                     </div>
                 )}
 
-                {/* ── TAB 2: SUBSCRIBERS MANAGEMENT ── */}
-                {activeTab === 'subscribers' && (
-                    <div style={{ background: '#181818', border: '1px solid #272727', borderRadius: 16, padding: 24 }}>
+                {/* ── TAB 2: PAST COURSES ── */}
+                {activeTab === 'past' && (
+                    <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                             <div>
-                                <h2 style={{ fontSize: 18, fontWeight: 600, color: '#f1f1f1', margin: 0 }}>Community Subscribers</h2>
-                                <p style={{ fontSize: 12, color: '#888', margin: '4px 0 0' }}>Students who follow your profile to get updates when you publish new courses.</p>
+                                <h2 style={{ fontSize: 18, fontWeight: 600, color: '#f1f1f1', margin: 0 }}>Past & Completed Courses</h2>
+                                <p style={{ fontSize: 12, color: '#888', margin: '4px 0 0' }}>Archived courses whose sessions have completed or ended. Inspect past enrollments or modify details.</p>
                             </div>
-                            <div style={{ textAlign: 'right' }}>
-                                <span style={{ fontSize: 28, fontWeight: 800, color: '#00C2CB', display: 'block' }}>{totalSubscribers}</span>
-                                <span style={{ fontSize: 11, color: '#777', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Subscribers</span>
-                            </div>
+                            <span style={{ fontSize: 12, color: '#94a3b8', background: 'rgba(148,163,184,0.1)', padding: '4px 12px', borderRadius: 20, fontWeight: 600 }}>
+                                {pastCourses.length} Past Course{pastCourses.length !== 1 ? 's' : ''}
+                            </span>
                         </div>
 
-                        <div style={{
-                            background: '#121212', borderRadius: 12, border: '1px solid #222',
-                            padding: 24, textAlign: 'center',
-                        }}>
-                            <Users size={48} color="#00C2CB" style={{ margin: '0 auto 12px', opacity: 0.8 }} />
-                            <h3 style={{ fontSize: 16, fontWeight: 600, color: '#eee', margin: '0 0 6px' }}>
-                                {totalSubscribers > 0 ? `You have ${totalSubscribers} active subscribers!` : "No subscribers yet"}
-                            </h3>
-                            <p style={{ fontSize: 13, color: '#888', maxWidth: 440, margin: '0 auto 16px', lineHeight: 1.5 }}>
-                                {totalSubscribers > 0 
-                                    ? "When you launch new courses, your subscribers are instantly notified on their dashboard and notifications feed."
-                                    : "Share your courses or public profile link with peers to grow your audience and build your tutoring network."}
-                            </p>
-                            <Link
-                                to={`/profile/${user?.id}`}
-                                style={{
-                                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                                    background: '#00C2CB', color: '#0f0f0f',
-                                    borderRadius: 20, padding: '8px 20px', fontSize: 13, fontWeight: 600,
-                                    textDecoration: 'none',
-                                }}
-                            >
-                                <ExternalLink size={14} />
-                                <span>Preview Public Channel</span>
-                            </Link>
-                        </div>
+                        {pastCourses.length === 0 ? (
+                            <div style={{
+                                textAlign: 'center', padding: '60px 20px',
+                                background: '#141414', borderRadius: 16, border: '1px dashed #333',
+                            }}>
+                                <Clock size={40} color="#555" style={{ margin: '0 auto 12px' }} />
+                                <h3 style={{ fontSize: 16, fontWeight: 600, color: '#eee', margin: '0 0 6px' }}>No past courses</h3>
+                                <p style={{ fontSize: 13, color: '#888', margin: '0', maxWidth: 400, marginLeft: 'auto', marginRight: 'auto' }}>
+                                    Courses where all scheduled sessions have ended or completed will automatically appear here.
+                                </p>
+                            </div>
+                        ) : (
+                            <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+                                gap: 20,
+                            }}>
+                                {pastCourses.map(course => renderCourseCard(course, true))}
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -1379,7 +1256,25 @@ export default function TutorDashboard() {
                                                     {!isLocked && (
                                                         <button
                                                             type="button"
-                                                            onClick={() => setEditSlots(editSlots.filter((_, i) => i !== idx))}
+                                                            onClick={() => {
+                                                                if (slot.id) {
+                                                                    setConfirmModal({
+                                                                        isOpen: true,
+                                                                        title: 'Remove Session Slot',
+                                                                        message: 'Are you sure you want to remove this scheduled session slot?',
+                                                                        confirmText: 'Remove Slot',
+                                                                        cancelText: 'Cancel',
+                                                                        confirmVariant: 'danger',
+                                                                        loading: false,
+                                                                        onConfirm: () => {
+                                                                            setEditSlots(prev => prev.filter((_, i) => i !== idx));
+                                                                            setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                                                                        },
+                                                                    });
+                                                                } else {
+                                                                    setEditSlots(prev => prev.filter((_, i) => i !== idx));
+                                                                }
+                                                            }}
                                                             style={{ background: 'transparent', border: 'none', color: '#ff5555', cursor: 'pointer', padding: 2 }}
                                                             title="Remove this slot"
                                                         >
@@ -1600,6 +1495,19 @@ export default function TutorDashboard() {
                     </div>
                 </div>
             )}
+
+            {/* ── Confirm Modal ── */}
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={confirmModal.onConfirm}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                confirmText={confirmModal.confirmText}
+                cancelText={confirmModal.cancelText}
+                confirmVariant={confirmModal.confirmVariant}
+                loading={confirmModal.loading}
+            />
         </div>
     );
 }
