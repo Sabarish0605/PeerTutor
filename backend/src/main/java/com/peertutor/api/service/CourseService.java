@@ -73,7 +73,7 @@ public class CourseService {
 
     // Fetch all courses for the public Marketplace Discover page (no student context)
     public List<CourseResponse> getAllCourses() {
-        return courseRepository.findAll().stream()
+        return courseRepository.findMarketplaceCourses().stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -85,7 +85,7 @@ public class CourseService {
      * @param studentId the currently logged-in student's user id
      */
     public List<CourseResponse> getAllCoursesForStudent(Long studentId) {
-        return courseRepository.findAll().stream()
+        return courseRepository.findMarketplaceCourses().stream()
                 .map(course -> mapToResponseForStudent(course, studentId))
                 .collect(Collectors.toList());
     }

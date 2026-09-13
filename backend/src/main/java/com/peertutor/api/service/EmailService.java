@@ -2,6 +2,7 @@ package com.peertutor.api.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
@@ -71,6 +72,20 @@ public class EmailService {
         String htmlContent = buildReminderHtml(studentName, courseTitle, tutorName, startTimeFormatted, meetLink);
 
         sendEmail(toEmail, studentName, subject, htmlContent);
+    }
+
+    /**
+     * Sends an escrow refund notification email when a tutor does not attend a scheduled session.
+     *
+     * @param studentEmail Recipient student email
+     * @param courseName   Course name
+     * @param slotTime     Formatted slot time
+     */
+    @Async
+    public void sendEscrowRefundEmail(String studentEmail, String courseName, String slotTime) {
+        String subject = "💰 Escrow Refund: Session unattended for " + courseName;
+        String htmlContent = buildEscrowRefundHtml(courseName, slotTime);
+        sendEmail(studentEmail, studentEmail, subject, htmlContent);
     }
 
 
@@ -191,6 +206,33 @@ public class EmailService {
                 "<div class='link-box'>" + resetLink + "</div>" +
                 "<p class='text' style='margin-top:24px;'>If you didn't request a password reset, you can safely ignore this email.</p>" +
                 "<div class='footer'>Sent with care from the Hive PeerTutor team.</div>" +
+                "</div></body></html>";
+    }
+
+    private String buildEscrowRefundHtml(String courseName, String slotTime) {
+        return "<!DOCTYPE html>" +
+                "<html><head><meta charset='UTF-8'><style>" +
+                "body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f0f0f; color: #f1f1f1; padding: 24px; }" +
+                ".card { background: #1c1c1c; border: 1px solid #333333; border-radius: 16px; padding: 32px; max-width: 540px; margin: 0 auto; }" +
+                ".brand { color: #00C2CB; font-size: 20px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 20px; }" +
+                ".title { font-size: 20px; font-weight: 700; color: #ef4444; margin-bottom: 8px; }" +
+                ".text { color: #aaaaaa; font-size: 14px; line-height: 1.6; margin-bottom: 20px; }" +
+                ".highlight-box { background: #141414; border: 1px solid #282828; border-radius: 12px; padding: 16px; margin-bottom: 24px; }" +
+                ".refund-tag { display: inline-block; background: rgba(34,197,94,0.15); color: #22c55e; font-weight: 700; font-size: 13px; padding: 4px 10px; border-radius: 6px; margin-top: 8px; }" +
+                ".footer { color: #666666; font-size: 12px; margin-top: 24px; text-align: center; }" +
+                "</style></head>" +
+                "<body>" +
+                "<div class='card'>" +
+                "<div class='brand'>Hive / PeerTutor Escrow Protection</div>" +
+                "<div class='title'>Session Unattended & Payment Refunded</div>" +
+                "<p class='text'>The tutor did not attend the scheduled session for <strong>" + courseName + "</strong> at <strong>" + slotTime + "</strong>. Your simulated escrow payment has been fully refunded to your wallet.</p>" +
+                "<div class='highlight-box'>" +
+                "<div style='color: #ffffff; font-weight: 600; font-size: 15px; margin-bottom: 6px;'>" + courseName + "</div>" +
+                "<div style='color: #aaaaaa; font-size: 13px;'>Scheduled Time: " + slotTime + "</div>" +
+                "<div class='refund-tag'>✓ 100% Escrow Refund Processed</div>" +
+                "</div>" +
+                "<p class='text'>Our automated escrow safeguard protects your funds whenever a tutor misses their session.</p>" +
+                "<div class='footer'>Sent with care by the Hive PeerTutor Automated Escrow Arbiter.</div>" +
                 "</div></body></html>";
     }
 }

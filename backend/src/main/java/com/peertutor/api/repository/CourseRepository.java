@@ -18,4 +18,7 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     List<Course> findByAuthorIdIn(List<Long> authorIds);
     
     long countByAuthorId(Long authorId);
+
+    @org.springframework.data.jpa.repository.Query("SELECT DISTINCT c FROM Course c JOIN c.slots s WHERE s.startTime > CURRENT_TIMESTAMP AND s.sessionStatus = 'SCHEDULED'")
+    List<Course> findMarketplaceCourses();
 }

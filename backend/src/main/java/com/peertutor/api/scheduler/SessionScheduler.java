@@ -22,20 +22,10 @@ public class SessionScheduler {
     private final CourseSlotRepository courseSlotRepository;
 
     /**
-     * Auto-completes course sessions whose end time has passed.
-     * Runs at the top of every hour (0 0 * * * *).
+     * Legacy auto-completion helper.
+     * Note: Scheduled auto-completion of expired SCHEDULED slots is now handled by
+     * EscrowScheduler to protect students from ghost tutors and process refunds.
      */
-    @Scheduled(cron = "0 0 * * * *")
-    @Transactional
-    public void autoCompletePastSessionsHourly() {
-        autoCompletePastSessions();
-    }
-
-    /**
-     * Also runs on a 60-second fixed rate to ensure sessions are marked
-     * COMPLETED promptly after their end time without waiting up to 60 minutes.
-     */
-    @Scheduled(fixedRate = 60_000)
     @Transactional
     public void autoCompletePastSessions() {
         LocalDateTime now = LocalDateTime.now();

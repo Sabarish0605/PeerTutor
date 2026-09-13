@@ -31,5 +31,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     // Returns the slot id the student is enrolled in for a given course (for "Already Enrolled" badge)
     @Query("SELECT b.slot.id FROM Booking b WHERE b.student.id = :studentId AND b.course.id = :courseId")
     Optional<Long> findEnrolledSlotId(@Param("studentId") Long studentId, @Param("courseId") Long courseId);
+
+    // Finds all bookings tied to a specific session slot
+    List<Booking> findBySlotId(Long slotId);
 }
 
