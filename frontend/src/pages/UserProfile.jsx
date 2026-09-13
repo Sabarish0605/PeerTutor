@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
-import api, { getErrorMessage } from "../services/api";
+import api, { getErrorMessage, getAvatarUrl } from "../services/api";
 import { toast } from "react-hot-toast";
 import EnrollmentModal from "../components/EnrollmentModal";
 import {
@@ -307,7 +307,7 @@ export default function UserProfile() {
                             }}>
                                 {profile?.avatarUrl || profile?.profileImage ? (
                                     <img
-                                        src={profile?.avatarUrl || profile?.profileImage}
+                                        src={getAvatarUrl(profile?.avatarUrl || profile?.profileImage)}
                                         alt={profile?.name}
                                         style={{ width: "100%", height: "100%", objectFit: "cover" }}
                                     />
@@ -973,7 +973,7 @@ export default function UserProfile() {
                                     overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center"
                                 }}>
                                     {editForm.avatarUrl ? (
-                                        <img src={editForm.avatarUrl} alt="Preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                        <img src={getAvatarUrl(editForm.avatarUrl)} alt="Preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                                     ) : (
                                         <span style={{ fontSize: 20, fontWeight: 700, color: "#00C2CB" }}>{avatarInitial}</span>
                                     )}

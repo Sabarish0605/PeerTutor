@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext, useRef, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import api, { getErrorMessage } from '../services/api';
+import api, { getErrorMessage, getAvatarUrl } from '../services/api';
 import { toast } from 'react-hot-toast';
 import EnrollmentModal from '../components/EnrollmentModal';
 import { isSlotExpired, getCourseSlotStats, getNextUpcomingSlot, formatTimeRemaining } from '../utils/dateUtils';
@@ -495,7 +495,7 @@ function CourseCard({ course, onEnroll, isEnrolled }) {
             <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                 <Link to={`/profile/${course.tutorId}`} onClick={e => e.stopPropagation()}>
                     <img
-                        src={course.authorAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(course.tutorName || 'T')}&background=1a2a2a&color=00C2CB`}
+                        src={getAvatarUrl(course.authorAvatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(course.tutorName || 'T')}&background=1a2a2a&color=00C2CB`}
                         alt={course.tutorName}
                         style={{
                             width: 36, height: 36, borderRadius: '50%',

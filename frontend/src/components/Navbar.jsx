@@ -2,6 +2,7 @@ import { useContext, useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import HiveLogo from './HiveLogo';
+import { getAvatarUrl } from '../services/api';
 
 export default function Navbar() {
     const { user, logout } = useContext(AuthContext);
@@ -45,7 +46,7 @@ export default function Navbar() {
                                 className="flex items-center space-x-2 focus:outline-none hover:bg-slate-100 p-1.5 rounded-full transition">
                                 <div className="w-10 h-10 rounded-full bg-slate-100 text-primary font-bold flex items-center justify-center shadow-sm border border-slate-200">
                                     {user.profileImage ? (
-                                        <img src={user.profileImage} alt="Profile" className="w-full h-full rounded-full object-cover" />
+                                        <img src={getAvatarUrl(user.profileImage)} alt="Profile" className="w-full h-full rounded-full object-cover" />
                                     ) : (
                                         getInitials(user.name)
                                     )}

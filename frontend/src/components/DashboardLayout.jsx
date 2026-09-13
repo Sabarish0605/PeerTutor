@@ -1,7 +1,7 @@
 import { useContext, useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams, Outlet } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import api from '../services/api';
+import api, { getAvatarUrl } from '../services/api';
 import { Home, BookOpen, Users, CircleUserRound, Search, X, Bell, Settings, LogOut, ExternalLink, Menu } from 'lucide-react';
 
 export default function DashboardLayout() {
@@ -314,7 +314,7 @@ export default function DashboardLayout() {
                             title="Account"
                         >
                             {user?.profileImage || user?.avatarUrl ? (
-                                <img alt={user?.name || "Profile"} className="w-full h-full object-cover" src={user.profileImage || user.avatarUrl} />
+                                <img alt={user?.name || "Profile"} className="w-full h-full object-cover" src={getAvatarUrl(user.profileImage || user.avatarUrl)} />
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center text-xs font-bold" style={{ background: '#2e7d32', color: '#ffffff' }}>
                                     {getInitials(user?.name)}
@@ -349,7 +349,7 @@ export default function DashboardLayout() {
                                         }}
                                     >
                                         {user?.profileImage || user?.avatarUrl ? (
-                                            <img alt={user.name} className="w-full h-full object-cover" src={user.profileImage || user.avatarUrl} />
+                                            <img alt={user.name} className="w-full h-full object-cover" src={getAvatarUrl(user.profileImage || user.avatarUrl)} />
                                         ) : (
                                             getInitials(user?.name)
                                         )}

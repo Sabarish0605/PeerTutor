@@ -7,7 +7,7 @@ import {
     Save, ChevronRight, HelpCircle, RefreshCw, Send, DollarSign, Building
 } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
-import api, { getErrorMessage } from '../services/api';
+import api, { getErrorMessage, getAvatarUrl } from '../services/api';
 import { toast } from 'react-hot-toast';
 import ConfirmModal from '../components/ConfirmModal';
 
@@ -451,7 +451,7 @@ Support: help@peertutor.io
                                     title="Click to upload new avatar"
                                 >
                                     {formData.avatarUrl ? (
-                                        <img src={formData.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        <img src={getAvatarUrl(formData.avatarUrl)} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                     ) : (
                                         <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 700, color: '#00C2CB' }}>
                                             {formData.fullName?.charAt(0) || 'U'}

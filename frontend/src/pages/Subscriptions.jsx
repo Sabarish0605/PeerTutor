@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
-import api, { getErrorMessage } from '../services/api';
+import api, { getErrorMessage, getAvatarUrl } from '../services/api';
 import { toast } from 'react-hot-toast';
 import EnrollmentModal from '../components/EnrollmentModal';
 import { getCourseSlotStats, getNextUpcomingSlot, formatTimeRemaining } from '../utils/dateUtils';
@@ -229,7 +229,7 @@ export default function Subscriptions() {
                                     transition: 'transform 0.15s, border-color 0.15s',
                                 }}>
                                     {tutor.avatar ? (
-                                        <img src={tutor.avatar} alt={tutor.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        <img src={getAvatarUrl(tutor.avatar)} alt={tutor.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                     ) : (
                                         <span style={{ fontSize: 16, fontWeight: 700, color: '#00C2CB' }}>
                                             {tutor.name.charAt(0)}
@@ -488,7 +488,7 @@ function SubscriptionCourseCard({ course, onEnroll }) {
             <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                 <Link to={`/profile/${course.tutorId}`} onClick={e => e.stopPropagation()}>
                     <img
-                        src={course.authorAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(course.tutorName || 'T')}&background=1a2a2a&color=00C2CB`}
+                        src={getAvatarUrl(course.authorAvatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(course.tutorName || 'T')}&background=1a2a2a&color=00C2CB`}
                         alt={course.tutorName}
                         style={{
                             width: 36, height: 36, borderRadius: '50%',

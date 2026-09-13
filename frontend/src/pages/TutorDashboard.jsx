@@ -1,7 +1,7 @@
 import { useContext, useState, useEffect, useMemo } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
-import api, { getErrorMessage } from '../services/api';
+import api, { getErrorMessage, getAvatarUrl } from '../services/api';
 import { toast } from 'react-hot-toast';
 import { parseSafeDate, formatSafeDate, formatSafeTimeRange } from '../utils/dateUtils';
 import ConfirmModal from '../components/ConfirmModal';
@@ -402,7 +402,7 @@ export default function TutorDashboard() {
                                 boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
                             }}>
                                 {profileData?.avatarUrl || user?.profileImage ? (
-                                    <img src={profileData?.avatarUrl || user?.profileImage} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    <img src={getAvatarUrl(profileData?.avatarUrl || user?.profileImage)} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                 ) : (
                                     <span style={{ fontSize: 28, fontWeight: 700, color: '#00C2CB' }}>
                                         {user?.name?.charAt(0) || 'U'}
@@ -979,7 +979,7 @@ export default function TutorDashboard() {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                                         <div style={{ width: 64, height: 64, borderRadius: '50%', overflow: 'hidden', background: '#222', border: '2px solid #444', flexShrink: 0 }}>
                                             {profileForm.avatarUrl ? (
-                                                <img src={profileForm.avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                <img src={getAvatarUrl(profileForm.avatarUrl)} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                             ) : (
                                                 <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00C2CB', fontWeight: 700 }}>
                                                     {user?.name?.charAt(0) || 'U'}
@@ -1053,7 +1053,7 @@ export default function TutorDashboard() {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                                     <div style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', border: '2px solid #3f3f3f', background: '#222' }}>
                                         {profileData?.avatarUrl || user?.profileImage ? (
-                                            <img src={profileData?.avatarUrl || user?.profileImage} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            <img src={getAvatarUrl(profileData?.avatarUrl || user?.profileImage)} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                         ) : (
                                             <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00C2CB', fontSize: 24, fontWeight: 700 }}>
                                                 {user?.name?.charAt(0) || 'U'}
