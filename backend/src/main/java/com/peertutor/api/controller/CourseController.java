@@ -23,8 +23,10 @@ public class CourseController {
     @PostMapping("/user/{userId}")
     public ResponseEntity<CourseResponse> createCourse(
             @PathVariable Long userId,
-            @RequestBody CourseRequest request
+            @RequestBody CourseRequest request,
+            Principal principal
     ) {
+        verifyUserOwnership(userId, principal);
         return ResponseEntity.ok(courseService.createCourse(userId, request));
     }
 
@@ -64,18 +66,35 @@ public class CourseController {
     public ResponseEntity<CourseResponse> updateCourse(
             @PathVariable Long courseId,
             @PathVariable Long userId,
-            @RequestBody CourseRequest request
+            @RequestBody CourseRequest request,
+            Principal principal
     ) {
+        verifyUserOwnership(userId, principal);
         return ResponseEntity.ok(courseService.updateCourse(courseId, userId, request));
     }
 
     @DeleteMapping("/{courseId}/user/{userId}")
     public ResponseEntity<Void> deleteCourse(
             @PathVariable Long courseId,
-            @PathVariable Long userId
-    )
-    {
+            @PathVariable Long userId,
+            Principal principal
+    ) {
+        verifyUserOwnership(userId, principal);
         courseService.deleteCourse(courseId, userId);
         return ResponseEntity.noContent().build();
+    }
+
+    private void verifyUserOwnership(Long userId, Principal principal) {
+        if (principal == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Authentication required.");
+        }
+        User caller = userRepository.findByEmail(principal.getName())
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.UNAUTHORIZED, "User not found."));
+        if (!caller.getId().equals(userId)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "Unauthorized: You cannot modify courses belonging to another user.");
+        }
     }
 }

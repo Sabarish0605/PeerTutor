@@ -13,4 +13,9 @@ public class CourseSlotResponse {
     private Integer maxSeats;
     private Integer currentEnrolled;
     private String sessionStatus;
+
+    @com.fasterxml.jackson.annotation.JsonProperty("status")
+    public String getStatus() {
+        return sessionStatus;
+    }
 }

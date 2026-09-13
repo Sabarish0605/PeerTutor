@@ -3,6 +3,8 @@ import { AuthProvider } from './context/AuthContext';
 import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import StudentDashboard from './pages/StudentDashboard';
 import TutorDashboard from './pages/TutorDashboard';
 import TutorProfileSetup from './pages/TutorProfileSetup';
@@ -27,57 +29,59 @@ function App() {
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
 
                 <Route element={<DashboardLayout />}>
                     <Route path="/profile/:id" element={<UserProfile />} />
 
-                    {/* Protected Routes - Student */}
+                    {/* Protected Routes — all authenticated users */}
                     <Route path="/my-learning" element={
-                        <ProtectedRoute allowedRoles={['STUDENT', 'TUTOR']}>
+                        <ProtectedRoute allowedRoles={['USER', 'ADMIN']}>
                             <MyLearning />
                         </ProtectedRoute>
                     } />
                     <Route path="/discover" element={
-                        <ProtectedRoute allowedRoles={['STUDENT', 'TUTOR']}>
+                        <ProtectedRoute allowedRoles={['USER', 'ADMIN']}>
                             <StudentDashboard />
                         </ProtectedRoute>
                     } />
                     <Route path="/subscriptions" element={
-                        <ProtectedRoute allowedRoles={['STUDENT', 'TUTOR']}>
+                        <ProtectedRoute allowedRoles={['USER', 'ADMIN']}>
                             <Subscriptions />
                         </ProtectedRoute>
                     } />
 
-                    {/* Protected Routes - Tutor */}
+                    {/* Creator routes — open to all users (P2P platform) */}
                     <Route path="/tutor/onboarding" element={
-                        <ProtectedRoute allowedRoles={['STUDENT', 'TUTOR']}>
+                        <ProtectedRoute allowedRoles={['USER', 'ADMIN']}>
                             <TutorOnboarding />
                         </ProtectedRoute>
                     } />
                     <Route path="/onboard" element={
-                        <ProtectedRoute allowedRoles={['STUDENT', 'TUTOR']}>
+                        <ProtectedRoute allowedRoles={['USER', 'ADMIN']}>
                             <TutorOnboarding />
                         </ProtectedRoute>
                     } />
                     {/* Studio (Profile, Subscribers, and Courses Hub) */}
                     <Route path="/studio" element={
-                        <ProtectedRoute allowedRoles={['STUDENT', 'TUTOR', 'ADMIN']}>
+                        <ProtectedRoute allowedRoles={['USER', 'ADMIN']}>
                             <TutorDashboard />
                         </ProtectedRoute>
                     } />
                     <Route path="/tutor/dashboard" element={
-                        <ProtectedRoute allowedRoles={['STUDENT', 'TUTOR', 'ADMIN']}>
+                        <ProtectedRoute allowedRoles={['USER', 'ADMIN']}>
                             <TutorDashboard />
                         </ProtectedRoute>
                     } />
                     <Route path="/tutor/setup" element={
-                        <ProtectedRoute allowedRoles={['TUTOR', 'ADMIN']}>
+                        <ProtectedRoute allowedRoles={['USER', 'ADMIN']}>
                             <TutorProfileSetup />
                         </ProtectedRoute>
                     } />
-                    
+
                     <Route path="/profile/settings" element={
-                        <ProtectedRoute allowedRoles={['STUDENT', 'TUTOR', 'ADMIN']}>
+                        <ProtectedRoute allowedRoles={['USER', 'ADMIN']}>
                             <ProfileSettings />
                         </ProtectedRoute>
                     } />

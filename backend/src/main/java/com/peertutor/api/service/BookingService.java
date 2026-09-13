@@ -33,8 +33,8 @@ public class BookingService {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new RuntimeException("Course not found"));
 
-        // 2. Fetch the Slot
-        CourseSlot slot = courseSlotRepository.findById(slotId)
+        // 2. Fetch the Slot with Pessimistic Write Lock (resolves race condition on last seat)
+        CourseSlot slot = courseSlotRepository.findByIdWithLock(slotId)
                 .orElseThrow(() -> new RuntimeException("Slot not found"));
                 
         if (!slot.getCourse().getId().equals(course.getId())) {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
-import api from '../services/api';
+import api, { getErrorMessage } from '../services/api';
 import { toast } from 'react-hot-toast';
 import { 
     BookOpen, Clock, Video, PlayCircle, Star, 
@@ -183,7 +183,7 @@ export default function MyLearning() {
 
                     // Auto-prompt review for first CLOSED slot that hasn't been reviewed yet
                     const closedUnreviewed = data.find(b =>
-                        b.slot?.sessionStatus === 'CLOSED' && !b.reviewed
+                        (b.slot?.sessionStatus === 'CLOSED' || b.slot?.sessionStatus === 'COMPLETED') && !b.reviewed
                     );
                     if (closedUnreviewed) {
                         setSelectedBooking(closedUnreviewed);
@@ -211,7 +211,7 @@ export default function MyLearning() {
             setReviewForm({ rating: 5, comment: '' });
         } catch (error) {
             console.error("Failed to submit review", error);
-            toast.error(error.response?.data?.message || "Submission failed.");
+            toast.error(getErrorMessage(error, "Submission failed."));
         } finally {
             setSubmittingReview(false);
         }
@@ -485,13 +485,14 @@ function LearningCourseItem({ booking, onOpenReview }) {
     const [hovered, setHovered] = useState(false);
     const course = booking.course;
     const slot = booking.slot;
-    const sessionStatus = slot?.sessionStatus || 'SCHEDULED';
+    const sessionStatus = slot?.sessionStatus || slot?.status || 'SCHEDULED';
     const dateObj = slot?.startTime ? new Date(slot.startTime) : null;
     const endObj = slot?.endTime ? new Date(slot.endTime) : null;
 
     const statusConfig = {
         SCHEDULED: { label: 'Starting Soon', color: '#facc15', bg: 'rgba(250,204,21,0.12)', dot: '#facc15' },
         LIVE:      { label: 'Live Now',       color: '#4ade80', bg: 'rgba(74,222,128,0.12)', dot: '#4ade80' },
+        COMPLETED: { label: 'Completed',      color: '#94a3b8', bg: 'rgba(148,163,184,0.1)', dot: '#94a3b8' },
         CLOSED:    { label: 'Session Ended',  color: '#94a3b8', bg: 'rgba(148,163,184,0.1)', dot: '#94a3b8' },
         EXPIRED:   { label: 'Expired',        color: '#555',    bg: 'rgba(255,255,255,0.04)', dot: '#555' },
     };
@@ -679,20 +680,20 @@ function LearningCourseItem({ booking, onOpenReview }) {
                     </button>
                 )}
 
-                {/* CLOSED/EXPIRED: meet link hidden, review button shown for CLOSED only */}
-                {(sessionStatus === 'CLOSED' || sessionStatus === 'EXPIRED') && (
+                {/* CLOSED/EXPIRED/COMPLETED: meet link hidden, review button shown for CLOSED & COMPLETED */}
+                {(sessionStatus === 'CLOSED' || sessionStatus === 'EXPIRED' || sessionStatus === 'COMPLETED') && (
                     <div style={{
                         flex: 1, padding: '8px 0', borderRadius: 8,
                         background: '#141414', border: '1px solid #2a2a2a',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: 12, color: '#555', fontWeight: 500,
                     }}>
-                        Session {sessionStatus === 'CLOSED' ? 'Closed' : 'Expired'}
+                        Session {sessionStatus === 'COMPLETED' ? 'Completed' : sessionStatus === 'CLOSED' ? 'Closed' : 'Expired'}
                     </div>
                 )}
 
-                {/* Review button — ONLY for CLOSED slots */}
-                {sessionStatus === 'CLOSED' && (
+                {/* Review button — for CLOSED and COMPLETED slots */}
+                {(sessionStatus === 'CLOSED' || sessionStatus === 'COMPLETED') && (
                     <button
                         onClick={onOpenReview}
                         title="Leave Feedback & Rating"

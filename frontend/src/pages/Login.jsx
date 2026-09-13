@@ -1,9 +1,9 @@
 import { useState, useContext } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import api from '../services/api';
-import { Eye, EyeOff, AlertCircle, ArrowLeft } from 'lucide-react';
-import FluxLogo from '../components/FluxLogo';
+import api, { getErrorMessage } from '../services/api';
+import { Eye, EyeOff, AlertCircle, ArrowLeft, Sparkles, BookOpen, Users, ArrowRight, MailCheck } from 'lucide-react';
+import HiveLogo from '../components/HiveLogo';
 
 /* ── Inline styles reused across the form ── */
 const inputStyle = {
@@ -21,25 +21,33 @@ const inputStyle = {
 };
 
 export default function Login() {
-    const [email, setEmail]       = useState('');
-    const [password, setPassword] = useState('');
-    const [showPw, setShowPw]     = useState(false);
-    const [error, setError]       = useState('');
-    const [loading, setLoading]   = useState(false);
+    const [email, setEmail]               = useState('');
+    const [password, setPassword]         = useState('');
+    const [showPw, setShowPw]             = useState(false);
+    const [error, setError]               = useState('');
+    const [loading, setLoading]           = useState(false);
+    const [unverifiedEmail, setUnverifiedEmail] = useState(''); // tracks unverified attempts
     const navigate = useNavigate();
     const { login } = useContext(AuthContext);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        setUnverifiedEmail('');
         setLoading(true);
         try {
             const response = await api.post('/auth/login', { email, password });
             const data = response.data;
             login(data, data.token);
-            navigate(data.role === 'TUTOR' ? '/studio' : '/discover');
-        } catch {
-            setError('Invalid email or password. Please verify your credentials.');
+            navigate('/discover');
+        } catch (err) {
+            const msg = err?.response?.data?.message || '';
+            if (msg === 'UNVERIFIED_ACCOUNT' || msg.includes('disabled')) {
+                // Surface a targeted verify-email prompt instead of a generic error
+                setUnverifiedEmail(email);
+            } else {
+                setError(getErrorMessage(err, 'Invalid email or password. Please verify your credentials.'));
+            }
         } finally {
             setLoading(false);
         }
@@ -92,7 +100,7 @@ export default function Login() {
                 {/* Central identity block */}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', zIndex: 1 }}>
                     {/* Logo glow orb */}
-                    <FluxLogo size={52} fontSize={32} />
+                    <HiveLogo size={52} fontSize={32} />
                     <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: '#00C2CB', textTransform: 'uppercase', marginTop: 14, marginBottom: 14,
                         background: 'rgba(0,194,203,0.1)', border: '1px solid rgba(0,194,203,0.25)',
                         borderRadius: 20, padding: '4px 14px', display: 'inline-block',
@@ -128,7 +136,7 @@ export default function Login() {
                 </div>
 
                 <div style={{ fontSize: 12, color: '#444', zIndex: 1 }}>
-                    FLUX © {new Date().getFullYear()}
+                    Hive © {new Date().getFullYear()}
                 </div>
             </div>
 
@@ -153,7 +161,41 @@ export default function Login() {
                         </p>
                     </div>
 
-                    {/* Error */}
+                    {/* Unverified account banner */}
+                    {unverifiedEmail && (
+                        <div style={{
+                            background: 'rgba(234,179,8,0.07)',
+                            border: '1px solid rgba(234,179,8,0.3)',
+                            borderRadius: 12,
+                            padding: '14px 16px',
+                            marginBottom: 20,
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                                <MailCheck size={16} color="#eab308" />
+                                <span style={{ fontSize: 13, color: '#eab308', fontWeight: 600 }}>Email not verified</span>
+                            </div>
+                            <p style={{ fontSize: 13, color: '#999', margin: '0 0 12px', lineHeight: 1.55 }}>
+                                <strong style={{ color: '#ccc' }}>{unverifiedEmail}</strong> hasn't been verified yet.
+                                Enter the OTP we sent during registration to activate your account.
+                            </p>
+                            <button
+                                onClick={() => navigate('/register', { state: { email: unverifiedEmail, step: 2 } })}
+                                style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                                    background: 'rgba(234,179,8,0.12)', border: '1px solid rgba(234,179,8,0.35)',
+                                    borderRadius: 8, padding: '8px 14px',
+                                    color: '#eab308', fontSize: 13, fontWeight: 700,
+                                    cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(234,179,8,0.2)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'rgba(234,179,8,0.12)'}
+                            >
+                                <MailCheck size={13} /> Verify my email →
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Generic error */}
                     {error && (
                         <div style={{
                             display: 'flex', alignItems: 'center', gap: 10,
@@ -186,9 +228,19 @@ export default function Login() {
 
                         {/* Password */}
                         <div>
-                            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#aaa', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                                Password
-                            </label>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
+                                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                    Password
+                                </label>
+                                <Link
+                                    to="/forgot-password"
+                                    style={{ fontSize: 12, color: '#00C2CB', fontWeight: 500, textDecoration: 'none', opacity: 0.85, transition: 'opacity 0.15s' }}
+                                    onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                                    onMouseLeave={e => e.currentTarget.style.opacity = '0.85'}
+                                >
+                                    Forgot password?
+                                </Link>
+                            </div>
                             <div style={{ position: 'relative' }}>
                                 <input
                                     type={showPw ? 'text' : 'password'}
@@ -212,6 +264,7 @@ export default function Login() {
                                 </button>
                             </div>
                         </div>
+
 
                         {/* Submit */}
                         <button

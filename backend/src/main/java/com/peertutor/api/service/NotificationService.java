@@ -43,53 +43,63 @@ public class NotificationService {
         int reminderCount = 0;
 
         for (Booking booking : allBookings) {
-            CourseSlot slot = booking.getSlot();
-            if (slot == null || !"SCHEDULED".equals(slot.getSessionStatus())) {
-                continue;
+            try {
+                CourseSlot slot = booking.getSlot();
+                if (slot == null || !"SCHEDULED".equals(slot.getSessionStatus())) {
+                    continue;
+                }
+
+                LocalDateTime start = slot.getStartTime();
+                if (start == null || start.isBefore(windowStart) || start.isAfter(windowEnd)) {
+                    continue;
+                }
+
+                User student = booking.getStudent();
+                Course course = booking.getCourse();
+                if (student == null || course == null) continue;
+
+                String slotMarker = "[Slot #" + slot.getId() + "]";
+                // Prevent duplicate reminders for the same slot
+                if (notificationRepository.existsByUserIdAndMessageContaining(student.getId(), slotMarker)) {
+                    continue;
+                }
+
+                String tutorName = course.getAuthor() != null ? course.getAuthor().getName() : "your tutor";
+                String formattedTime = start.format(TIME_FORMATTER);
+
+                // 1. In-App Notification (Always delivered even if external email fails)
+                String notifMsg = "⏰ Reminder: Your session for '" + course.getTitle() + "' with " + tutorName
+                        + " starts in ~60 minutes (" + formattedTime + ")! " + slotMarker;
+
+                Notification notification = Notification.builder()
+                        .user(student)
+                        .message(notifMsg)
+                        .isRead(false)
+                        .build();
+                notificationRepository.save(notification);
+
+                // 2. Email Delivery with isolated exception suppression
+                try {
+                    emailService.sendSessionReminder(
+                            student.getEmail(),
+                            student.getName(),
+                            course.getTitle(),
+                            tutorName,
+                            formattedTime,
+                            course.getMeetLink()
+                    );
+                } catch (Exception emailEx) {
+                    log.warn("External email dispatch failed for student {}: {}. Continuing loop.",
+                            student.getEmail(), emailEx.getMessage());
+                }
+
+                reminderCount++;
+                log.info("Sent 60-min reminder to student id={} for slot id={} course='{}'",
+                        student.getId(), slot.getId(), course.getTitle());
+            } catch (Exception itemEx) {
+                log.error("Error processing booking reminder for id={}: {}",
+                        booking != null ? booking.getId() : "null", itemEx.getMessage());
             }
-
-            LocalDateTime start = slot.getStartTime();
-            if (start == null || start.isBefore(windowStart) || start.isAfter(windowEnd)) {
-                continue;
-            }
-
-            User student = booking.getStudent();
-            Course course = booking.getCourse();
-            if (student == null || course == null) continue;
-
-            String slotMarker = "[Slot #" + slot.getId() + "]";
-            // Prevent duplicate reminders for the same slot
-            if (notificationRepository.existsByUserIdAndMessageContaining(student.getId(), slotMarker)) {
-                continue;
-            }
-
-            String tutorName = course.getAuthor() != null ? course.getAuthor().getName() : "your tutor";
-            String formattedTime = start.format(TIME_FORMATTER);
-
-            // 1. In-App Notification
-            String notifMsg = "⏰ Reminder: Your session for '" + course.getTitle() + "' with " + tutorName
-                    + " starts in ~60 minutes (" + formattedTime + ")! " + slotMarker;
-
-            Notification notification = Notification.builder()
-                    .user(student)
-                    .message(notifMsg)
-                    .isRead(false)
-                    .build();
-            notificationRepository.save(notification);
-
-            // 2. Email Delivery (SendGrid / HTML Template)
-            emailService.sendSessionReminder(
-                    student.getEmail(),
-                    student.getName(),
-                    course.getTitle(),
-                    tutorName,
-                    formattedTime,
-                    course.getMeetLink()
-            );
-
-            reminderCount++;
-            log.info("Sent 60-min reminder to student id={} for slot id={} course='{}'",
-                    student.getId(), slot.getId(), course.getTitle());
         }
 
         if (reminderCount > 0) {

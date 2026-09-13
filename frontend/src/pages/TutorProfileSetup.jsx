@@ -23,13 +23,7 @@ export default function TutorProfileSetup() {
         setSubmitting(true);
         try {
             await api.post(`/tutors/profile/${user.id}`, formData);
-
-            // Immediately sync updated role in local storage
-            const updatedUser = { ...user, role: 'TUTOR' };
-            const currentToken = localStorage.getItem('token');
-            login(updatedUser, currentToken);
-
-            navigate('/tutor/dashboard');
+            navigate('/studio');
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to initialize Tutor Studio. Please try again.');
         } finally {

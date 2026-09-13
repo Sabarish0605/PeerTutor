@@ -25,6 +25,31 @@ public class EmailService {
             .build();
 
     /**
+     * Sends a 6-digit OTP verification email to a new user.
+     *
+     * @param to  Recipient email address
+     * @param otp The 6-digit OTP code
+     */
+    public void sendOtpEmail(String to, String otp) {
+        String subject = "🔐 Your Hive verification code";
+        String html = buildOtpHtml(otp);
+        sendEmail(to, to, subject, html);
+    }
+
+    /**
+     * Sends a password reset email containing a tokenised reset link.
+     *
+     * @param to    Recipient email address
+     * @param token UUID reset token
+     */
+    public void sendPasswordResetEmail(String to, String token) {
+        String resetLink = "http://localhost:5173/reset-password?token=" + token;
+        String subject = "🔑 Reset your Hive password";
+        String html = buildResetHtml(resetLink);
+        sendEmail(to, to, subject, html);
+    }
+
+    /**
      * Sends a 60-minute session reminder email to a student.
      *
      * @param toEmail   Recipient student email
@@ -47,6 +72,7 @@ public class EmailService {
 
         sendEmail(toEmail, studentName, subject, htmlContent);
     }
+
 
     /**
      * Dispatches an email via SendGrid v3 API or logs it if SendGrid is unconfigured.
@@ -101,7 +127,7 @@ public class EmailService {
                 "</style></head>" +
                 "<body>" +
                 "<div class='card'>" +
-                "<div class='brand'>FLUX / PeerTutor</div>" +
+                "<div class='brand'>Hive / PeerTutor</div>" +
                 "<div class='title'>Your Session Starts in 60 Minutes!</div>" +
                 "<p class='text'>Hi " + studentName + ",</p>" +
                 "<p class='text'>This is a friendly reminder that your upcoming peer tutoring session is starting soon.</p>" +
@@ -113,8 +139,58 @@ public class EmailService {
                 (meetLink != null && !meetLink.isBlank()
                         ? "<p style='margin-bottom: 24px;'><a href='" + meetLink + "' class='btn' target='_blank'>Access Class Link</a></p>"
                         : "<p class='text'>Please log into your dashboard to join the live session once it starts.</p>") +
-                "<div class='footer'>Sent with care from the FLUX PeerTutor automated scheduling engine.</div>" +
+                "<div class='footer'>Sent with care from the Hive PeerTutor automated scheduling engine.</div>" +
                 "</div>" +
                 "</body></html>";
+    }
+
+    private String buildOtpHtml(String otp) {
+        return "<!DOCTYPE html>" +
+                "<html><head><meta charset='UTF-8'><style>" +
+                "body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f0f0f; color: #f1f1f1; padding: 24px; }" +
+                ".card { background: #1c1c1c; border: 1px solid #333333; border-radius: 16px; padding: 32px; max-width: 480px; margin: 0 auto; }" +
+                ".brand { color: #00C2CB; font-size: 20px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 20px; }" +
+                ".title { font-size: 20px; font-weight: 700; color: #ffffff; margin-bottom: 8px; }" +
+                ".text { color: #aaaaaa; font-size: 14px; line-height: 1.6; margin-bottom: 20px; }" +
+                ".otp-box { background: #141414; border: 2px solid #00C2CB; border-radius: 14px; padding: 24px; text-align: center; margin: 24px 0; }" +
+                ".otp-code { font-size: 42px; font-weight: 800; letter-spacing: 14px; color: #00C2CB; font-variant-numeric: tabular-nums; }" +
+                ".otp-hint { color: #666666; font-size: 12px; margin-top: 10px; }" +
+                ".footer { color: #666666; font-size: 12px; margin-top: 24px; text-align: center; }" +
+                "</style></head>" +
+                "<body><div class='card'>" +
+                "<div class='brand'>Hive / PeerTutor</div>" +
+                "<div class='title'>Verify your email address</div>" +
+                "<p class='text'>Welcome to Hive! Enter the code below to confirm your account. It expires in <strong style='color:#f1f1f1;'>10 minutes</strong>.</p>" +
+                "<div class='otp-box'>" +
+                "<div class='otp-code'>" + otp + "</div>" +
+                "<div class='otp-hint'>One-time verification code</div>" +
+                "</div>" +
+                "<p class='text'>If you didn't create a Hive account, you can safely ignore this email.</p>" +
+                "<div class='footer'>Sent with care from the Hive PeerTutor team.</div>" +
+                "</div></body></html>";
+    }
+
+    private String buildResetHtml(String resetLink) {
+        return "<!DOCTYPE html>" +
+                "<html><head><meta charset='UTF-8'><style>" +
+                "body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f0f0f; color: #f1f1f1; padding: 24px; }" +
+                ".card { background: #1c1c1c; border: 1px solid #333333; border-radius: 16px; padding: 32px; max-width: 480px; margin: 0 auto; }" +
+                ".brand { color: #00C2CB; font-size: 20px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 20px; }" +
+                ".title { font-size: 20px; font-weight: 700; color: #ffffff; margin-bottom: 8px; }" +
+                ".text { color: #aaaaaa; font-size: 14px; line-height: 1.6; margin-bottom: 20px; }" +
+                ".btn { display: inline-block; background: #00C2CB; color: #0f0f0f !important; font-weight: 700; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-size: 14px; }" +
+                ".link-box { background: #141414; border: 1px solid #282828; border-radius: 10px; padding: 12px 16px; word-break: break-all; font-size: 12px; color: #888888; margin-top: 16px; }" +
+                ".footer { color: #666666; font-size: 12px; margin-top: 24px; text-align: center; }" +
+                "</style></head>" +
+                "<body><div class='card'>" +
+                "<div class='brand'>Hive / PeerTutor</div>" +
+                "<div class='title'>Reset your password</div>" +
+                "<p class='text'>We received a request to reset your Hive account password. Click the button below — this link expires in <strong style='color:#f1f1f1;'>15 minutes</strong>.</p>" +
+                "<p style='text-align:center;margin: 28px 0;'><a href='" + resetLink + "' class='btn' target='_blank'>Reset My Password</a></p>" +
+                "<p class='text' style='font-size:13px;'>Or paste this link into your browser:</p>" +
+                "<div class='link-box'>" + resetLink + "</div>" +
+                "<p class='text' style='margin-top:24px;'>If you didn't request a password reset, you can safely ignore this email.</p>" +
+                "<div class='footer'>Sent with care from the Hive PeerTutor team.</div>" +
+                "</div></body></html>";
     }
 }

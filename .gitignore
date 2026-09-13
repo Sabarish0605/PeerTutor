@@ -2,3 +2,7 @@
 *.iml
 .DS_Store
 Thumbs.db
+
+# Local configuration & secrets
+*application-local.properties
+application-local.properties

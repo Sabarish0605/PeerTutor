@@ -1,10 +1,10 @@
 import { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import api from '../services/api';
+import api, { getErrorMessage } from '../services/api';
 import { toast } from 'react-hot-toast';
 import { Wallet, BookOpen, BadgeCheck, Zap } from 'lucide-react';
-import FluxLogo from '../components/FluxLogo';
+import HiveLogo from '../components/HiveLogo';
 
 const inputBase = {
     width: '100%',
@@ -36,7 +36,7 @@ export default function TutorOnboarding() {
             toast.success('Successfully upgraded to Tutor!');
             navigate('/tutor/dashboard');
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Failed to upgrade to tutor.');
+            toast.error(getErrorMessage(error, 'Failed to upgrade to tutor.'));
         } finally {
             setLoading(false);
         }
@@ -63,7 +63,7 @@ export default function TutorOnboarding() {
                 {/* Header block */}
                 <div style={{ textAlign: 'center', marginBottom: 40 }}>
                     <div style={{ display: 'inline-flex', marginBottom: 20 }}>
-                        <FluxLogo size={56} fontSize={40} />
+                        <HiveLogo size={56} fontSize={40} />
                     </div>
                     <div style={{
                         display: 'inline-block', fontSize: 10, fontWeight: 700, letterSpacing: '0.14em',

@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
-import api from "../services/api";
+import api, { getErrorMessage } from "../services/api";
 import { toast } from "react-hot-toast";
 import EnrollmentModal from "../components/EnrollmentModal";
 import {
@@ -37,7 +37,7 @@ export default function UserProfile() {
     const [uploading, setUploading] = useState(false);
     const [enrollingCourse, setEnrollingCourse] = useState(null);
 
-    const isOwnProfile = user?.id === parseInt(id);
+    const isOwnProfile = user && user.id === parseInt(id);
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -70,7 +70,7 @@ export default function UserProfile() {
                 setReviews(Array.isArray(reviewsRes.data) ? reviewsRes.data : []);
                 setProfile(prev => ({ ...prev, coursesCount: courseList.length }));
             } catch (err) {
-                console.error("Failed to fetch profile", err);
+                toast.error(getErrorMessage(err, "Failed to load profile."));
             } finally {
                 setLoading(false);
             }
@@ -94,8 +94,8 @@ export default function UserProfile() {
                 subscribersCount: (prev.subscribersCount || 0) + (res.data.subscribed ? 1 : -1)
             }));
             toast.success(res.data.subscribed ? "Subscribed to tutor!" : "Unsubscribed.");
-        } catch {
-            toast.error("Subscription failed.");
+        } catch (error) {
+            toast.error(getErrorMessage(error, "Subscription failed."));
         } finally {
             setSubscribing(false);
         }
@@ -125,8 +125,8 @@ export default function UserProfile() {
             login(res.data, localStorage.getItem("token"));
             setIsEditing(false);
             toast.success("Profile updated successfully!");
-        } catch {
-            toast.error("Failed to update profile.");
+        } catch (error) {
+            toast.error(getErrorMessage(error, "Failed to update profile."));
         }
     };
 
@@ -140,8 +140,8 @@ export default function UserProfile() {
             const res = await api.post("/upload", formData, { headers: { "Content-Type": "multipart/form-data" } });
             setEditForm(prev => ({ ...prev, avatarUrl: res.data.url }));
             toast.success("Profile image uploaded!");
-        } catch {
-            toast.error("Image upload failed.");
+        } catch (error) {
+            toast.error(getErrorMessage(error, "Image upload failed."));
         } finally {
             setUploading(false);
         }
@@ -158,7 +158,7 @@ export default function UserProfile() {
             toast.success("Successfully enrolled in course!");
             setEnrollingCourse(null);
         } catch (error) {
-            toast.error(error.response?.data?.message || "Enrollment failed.");
+            toast.error(getErrorMessage(error, "Enrollment failed."));
         }
     };
 
@@ -325,7 +325,7 @@ export default function UserProfile() {
 
                             {/* Creator Identity & Meta */}
                             <div style={{ flex: 1, minWidth: 0 }}>
-                                {/* Name + Verified FLUX Badge */}
+                                {/* Name + Verified Hive Badge */}
                                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                                     <h1 style={{
                                         margin: 0, fontSize: 26, fontWeight: 800,
@@ -333,7 +333,7 @@ export default function UserProfile() {
                                     }}>
                                         {profile?.name}
                                     </h1>
-                                    <span title="Verified FLUX Tutor" style={{ display: "inline-flex", alignItems: "center", color: "#00C2CB" }}>
+                                    <span title="Verified Hive Tutor" style={{ display: "inline-flex", alignItems: "center", color: "#00C2CB" }}>
                                         <CheckCircle2 size={19} fill="#00C2CB" color="#0f0f0f" />
                                     </span>
                                 </div>
@@ -884,7 +884,7 @@ export default function UserProfile() {
 
                                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                                     <div>
-                                        <span style={{ fontSize: 11, color: "#888", fontWeight: 600, textTransform: "uppercase" }}>Joined FLUX</span>
+                                        <span style={{ fontSize: 11, color: "#888", fontWeight: 600, textTransform: "uppercase" }}>Joined Hive</span>
                                         <div style={{ fontSize: 14, color: "#f1f1f1", fontWeight: 500, marginTop: 2 }}>
                                             September 2026
                                         </div>

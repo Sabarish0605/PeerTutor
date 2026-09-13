@@ -16,4 +16,11 @@ public class ProfileUpdateRequest {
     private String avatarUrl;
     private String portfolioUrl;
     private String repositoryUrl;
+    private String timezone;
+    private String timeFormat;
+    private Boolean emailNotifs60m;
+    private Boolean emailNotifsNewCourses;
+    private Boolean emailNotifsSecurity;
+    private String payoutUpi;
+    private String payoutBank;
 }

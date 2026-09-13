@@ -2,7 +2,6 @@ package com.peertutor.api.service;
 
 import com.peertutor.api.dto.TutorProfileRequest;
 import com.peertutor.api.dto.OnboardTutorRequest;
-import com.peertutor.api.entity.Role;
 import com.peertutor.api.entity.TutorProfile;
 import com.peertutor.api.entity.User;
 import com.peertutor.api.repository.TutorProfileRepository;
@@ -22,11 +21,7 @@ public class TutorProfileService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // 2. UPGRADE THE ROLE TO TUTOR
-        user.setRole(Role.TUTOR);
-        userRepository.save(user);
-
-        // 3. Check if they ALREADY have a profile
+        // 2. Check if they ALREADY have a profile
         var existingProfileOpt = tutorProfileRepository.findByUserId(userId);
 
         if (existingProfileOpt.isPresent()) {
@@ -54,7 +49,6 @@ public class TutorProfileService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        user.setRole(Role.TUTOR);
         user.setBio(request.getBio());
         user = userRepository.save(user);
 

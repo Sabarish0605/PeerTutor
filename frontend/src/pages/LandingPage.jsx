@@ -1,7 +1,7 @@
 import { useEffect, useContext, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import FluxLogo from '../components/FluxLogo';
+import HiveLogo from '../components/HiveLogo';
 import {
     Search, ChevronDown, ArrowRight, Zap,
     MonitorPlay, Code, PenTool, Database, Terminal, Layout,
@@ -37,7 +37,7 @@ export default function LandingPage() {
     const navigate  = useNavigate();
 
     useEffect(() => {
-        if (user) navigate(user.role === 'TUTOR' ? '/studio' : '/discover');
+        if (user) navigate('/discover');
     }, [user, navigate]);
 
     if (user) return null;
@@ -55,7 +55,7 @@ export default function LandingPage() {
             }}>
                 {/* Logo */}
                 <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
-                    <FluxLogo size={28} fontSize={17} />
+                    <HiveLogo size={28} fontSize={17} />
                 </Link>
 
                 {/* Single pair of auth buttons — only here */}
@@ -126,7 +126,7 @@ export default function LandingPage() {
 
                     {/* Sub */}
                     <p style={{ fontSize: 17, color: T.muted, maxWidth: 520, lineHeight: 1.7, margin: 0 }}>
-                        FLUX connects you with fellow students who can teach you exactly what you need — live, over a video call, on your schedule.
+                        Hive connects you with fellow students who can teach you exactly what you need — live, over a video call, on your schedule.
                     </p>
 
                     {/* Single CTA */}
@@ -235,7 +235,7 @@ export default function LandingPage() {
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8,
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                        <FluxLogo size={22} fontSize={13} color="#444" />
+                        <HiveLogo size={22} fontSize={13} color="#444" />
                         <span style={{ fontSize: 13, color: '#444', fontWeight: 600 }}>
                             © {new Date().getFullYear()}
                         </span>

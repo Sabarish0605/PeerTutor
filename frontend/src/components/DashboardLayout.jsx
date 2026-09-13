@@ -141,7 +141,7 @@ export default function DashboardLayout() {
                     borderBottom: '1px solid #1f1f1f',
                 }}
             >
-                {/* Left Area: 3 lines hamburger button + FLUX Logo (Fixed position, NO line between them) */}
+                {/* Left Area: 3 lines hamburger button + Hive Logo (Fixed position, NO line between them) */}
                 <div className="flex items-center gap-4 flex-shrink-0">
                     <button
                         onClick={toggleSidebar}
@@ -157,19 +157,19 @@ export default function DashboardLayout() {
                         style={{ textDecoration: 'none' }}
                     >
                         <img
-                            src="/flux-icon.png"
-                            alt="FLUX"
-                            className="h-6 w-auto object-contain"
+                            src="/hive-icon.png"
+                            alt="Hive"
+                            className="h-7 w-auto object-contain"
                         />
                         <span style={{
-                            fontFamily: 'Roboto, Inter, sans-serif',
+                            fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
                             fontWeight: 800,
                             fontSize: 20,
                             color: '#ffffff',
                             letterSpacing: '-0.5px',
                             lineHeight: 1,
                         }}>
-                            FLUX
+                            Hive
                         </span>
                     </Link>
                 </div>
@@ -520,7 +520,7 @@ export default function DashboardLayout() {
                 {/* Sidebar footer subtle branding (expanded mode only) */}
                 {!isCollapsed && (
                     <div className="p-4" style={{ borderTop: '1px solid #1f1f1f' }}>
-                        <p className="text-[11px] text-[#717171] text-center whitespace-nowrap">FLUX &copy; 2026</p>
+                        <p className="text-[11px] text-[#717171] text-center whitespace-nowrap">Hive &copy; 2026</p>
                     </div>
                 )}
             </aside>

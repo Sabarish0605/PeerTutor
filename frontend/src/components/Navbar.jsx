@@ -1,7 +1,7 @@
 import { useContext, useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import FluxLogo from './FluxLogo';
+import HiveLogo from './HiveLogo';
 
 export default function Navbar() {
     const { user, logout } = useContext(AuthContext);
@@ -34,7 +34,7 @@ export default function Navbar() {
         <nav className="sticky top-0 bg-white border-b border-slate-200 text-slate-800 shadow-sm relative z-50">
             <div className="container mx-auto px-4 py-3 flex justify-between items-center">
                 <Link to="/" style={{ textDecoration: 'none' }}>
-                    <FluxLogo size={26} fontSize={16} color="#1e293b" />
+                    <HiveLogo size={26} fontSize={16} color="#1e293b" />
                 </Link>
 
                 <div className="flex items-center space-x-4">

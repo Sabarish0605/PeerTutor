@@ -1,10 +1,10 @@
 import { useState, useEffect, useContext, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import api from '../services/api';
+import api, { getErrorMessage } from '../services/api';
 import { toast } from 'react-hot-toast';
 import EnrollmentModal from '../components/EnrollmentModal';
-import { isSlotExpired } from '../utils/dateUtils';
+import { isSlotExpired, getCourseSlotStats } from '../utils/dateUtils';
 import { PlayCircle, PlusCircle, Clock, ChevronRight, ChevronLeft, CheckCircle, Search, X } from 'lucide-react';
 
 const T = {
@@ -221,7 +221,7 @@ export default function StudentDashboard() {
                 toast.success("Enrolled successfully!", { id: "payment" });
                 fetchMarketplaceData();
             } catch (err) {
-                toast.error(err.response?.data?.message || 'Enrollment failed.', { id: "payment" });
+                toast.error(getErrorMessage(err, 'Enrollment failed.'), { id: "payment" });
             }
         }, 1500);
     };
@@ -324,14 +324,11 @@ export default function StudentDashboard() {
                     gap: '20px 16px',
                 }}>
                     {filteredCourses.map(course => {
-                        const { totalSlots, seatsLeft } = slotStats(course);
                         const isEnrolled = !!course.enrolledSlotId;
                         return (
                             <CourseCard
                                 key={course.id}
                                 course={course}
-                                totalSlots={totalSlots}
-                                seatsLeft={seatsLeft}
                                 onEnroll={handleEnrollClick}
                                 isEnrolled={isEnrolled}
                             />
@@ -352,25 +349,32 @@ export default function StudentDashboard() {
 }
 
 /* ── YouTube-style dark course card with hover highlighting ── */
-function CourseCard({ course, totalSlots, seatsLeft, onEnroll, isEnrolled }) {
+function CourseCard({ course, onEnroll, isEnrolled }) {
     const [hovered, setHovered] = useState(false);
-    const noSeats = totalSlots === 0 || seatsLeft === 0;
+    const { totalUpcomingSlots, seatsLeft, isSoldOut, hasNoUpcoming } = getCourseSlotStats(course);
+    const isActionDisabled = hasNoUpcoming || isSoldOut;
+
+    const handleCardClick = () => {
+        if (!isActionDisabled && !isEnrolled) {
+            onEnroll(course);
+        }
+    };
 
     return (
         <div
-            onClick={() => onEnroll(course)}
+            onClick={handleCardClick}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
             style={{
                 display: 'flex',
                 flexDirection: 'column',
-                cursor: 'pointer',
+                cursor: isActionDisabled ? 'default' : 'pointer',
                 borderRadius: 16,
                 padding: '10px',
                 background: hovered ? '#212121' : 'transparent',
                 border: hovered ? '1px solid #333333' : '1px solid transparent',
                 transition: 'background 0.2s ease, border-color 0.2s ease, transform 0.2s ease',
-                transform: hovered ? 'translateY(-2px)' : 'none',
+                transform: hovered && !isActionDisabled ? 'translateY(-2px)' : 'none',
             }}
         >
             {/* 16:9 Thumbnail */}
@@ -392,7 +396,7 @@ function CourseCard({ course, totalSlots, seatsLeft, onEnroll, isEnrolled }) {
                             position: 'absolute', inset: 0,
                             width: '100%', height: '100%',
                             objectFit: 'cover', display: 'block',
-                            transform: hovered ? 'scale(1.03)' : 'scale(1)',
+                            transform: hovered && !isActionDisabled ? 'scale(1.03)' : 'scale(1)',
                             transition: 'transform 0.4s ease',
                         }}
                     />
@@ -457,7 +461,7 @@ function CourseCard({ course, totalSlots, seatsLeft, onEnroll, isEnrolled }) {
                     {/* Title */}
                     <h3 style={{
                         margin: '0 0 4px', fontSize: 14, fontWeight: 600,
-                        color: hovered ? '#00C2CB' : '#f1f1f1',
+                        color: hovered && !isActionDisabled ? '#00C2CB' : '#f1f1f1',
                         lineHeight: 1.4,
                         display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
                         overflow: 'hidden',
@@ -474,15 +478,20 @@ function CourseCard({ course, totalSlots, seatsLeft, onEnroll, isEnrolled }) {
                     {/* Slots + price */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <Clock size={11} color={noSeats ? '#ff4444' : '#aaaaaa'} />
+                            <Clock
+                                size={11}
+                                color={hasNoUpcoming ? '#666666' : isSoldOut ? '#ff4444' : '#aaaaaa'}
+                            />
                             <span style={{
                                 fontSize: 12,
-                                color: noSeats ? '#ff4444' : '#aaaaaa',
-                                fontWeight: noSeats ? 600 : 400,
+                                color: hasNoUpcoming ? '#888888' : isSoldOut ? '#ff4444' : '#aaaaaa',
+                                fontWeight: (isSoldOut || hasNoUpcoming) ? 600 : 400,
                             }}>
-                                {noSeats
+                                {hasNoUpcoming
+                                    ? 'No Upcoming Sessions'
+                                    : isSoldOut
                                     ? 'Fully booked'
-                                    : `${totalSlots} slot${totalSlots !== 1 ? 's' : ''} · ${seatsLeft} left`}
+                                    : `${totalUpcomingSlots} slot${totalUpcomingSlots !== 1 ? 's' : ''} · ${seatsLeft} left`}
                             </span>
                         </div>
                         <span style={{ fontSize: 13, fontWeight: 700, color: '#00C2CB', whiteSpace: 'nowrap' }}>
@@ -492,7 +501,7 @@ function CourseCard({ course, totalSlots, seatsLeft, onEnroll, isEnrolled }) {
                 </div>
             </div>
 
-            {/* Enroll / Already-Enrolled button */}
+            {/* Enroll / Already-Enrolled / Unavailable button */}
             {isEnrolled ? (
                 <button
                     disabled
@@ -512,31 +521,69 @@ function CourseCard({ course, totalSlots, seatsLeft, onEnroll, isEnrolled }) {
                     <CheckCircle size={14} />
                     Already Enrolled
                 </button>
+            ) : hasNoUpcoming ? (
+                <button
+                    disabled
+                    style={{
+                        marginTop: 10,
+                        width: '100%',
+                        padding: '8px 0',
+                        borderRadius: 8,
+                        border: '1px solid #282828',
+                        cursor: 'not-allowed',
+                        background: '#181818',
+                        color: '#777777',
+                        fontSize: 12, fontWeight: 600,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    }}
+                >
+                    <Clock size={13} color="#666" />
+                    No Upcoming Sessions
+                </button>
+            ) : isSoldOut ? (
+                <button
+                    disabled
+                    style={{
+                        marginTop: 10,
+                        width: '100%',
+                        padding: '8px 0',
+                        borderRadius: 8,
+                        border: '1px solid rgba(255,68,68,0.2)',
+                        cursor: 'not-allowed',
+                        background: '#181818',
+                        color: '#ff5555',
+                        fontSize: 13, fontWeight: 600,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    }}
+                >
+                    <PlusCircle size={14} color="#ff5555" />
+                    Fully Booked
+                </button>
             ) : (
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
                         onEnroll(course);
                     }}
-                    disabled={noSeats}
                     style={{
                         marginTop: 10,
                         width: '100%',
                         padding: '8px 0',
                         borderRadius: 8,
                         border: 'none',
-                        cursor: noSeats ? 'not-allowed' : 'pointer',
-                        background: noSeats ? '#181818' : hovered ? '#00C2CB' : '#1f3434',
-                        color: noSeats ? '#555' : '#fff',
+                        cursor: 'pointer',
+                        background: hovered ? '#00C2CB' : '#1f3434',
+                        color: '#fff',
                         fontSize: 13, fontWeight: 600,
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                         transition: 'background 0.2s ease',
                     }}
                 >
                     <PlusCircle size={14} />
-                    {noSeats ? 'Fully Booked' : 'Enroll Now'}
+                    Enroll Now
                 </button>
             )}
         </div>
     );
 }
+

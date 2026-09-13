@@ -1,7 +1,7 @@
 import { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
-import api from '../services/api';
+import api, { getErrorMessage } from '../services/api';
 import { toast } from 'react-hot-toast';
 import { parseSafeDate, formatSafeDate, formatSafeTimeRange } from '../utils/dateUtils';
 import { 
@@ -103,6 +103,14 @@ export default function TutorDashboard() {
                 return;
             }
 
+            // Validate advance timing (at least 15 minutes from now)
+            const minAdvanceTime = Date.now() + 15 * 60 * 1000;
+            const tooSoon = formattedSlots.find(s => new Date(s.startTime).getTime() < minAdvanceTime);
+            if (tooSoon) {
+                toast.error('Session slots must be scheduled at least 15 minutes in advance.');
+                return;
+            }
+
             const payload = { ...formData, slots: formattedSlots };
             const res = await api.post(`/courses/user/${user.id}`, payload);
             setMyCourses([...myCourses, res.data]);
@@ -111,7 +119,7 @@ export default function TutorDashboard() {
             setSlots([{ date: '', startTime: '', endTime: '' }]);
             toast.success("Course published successfully!");
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Failed to publish course.');
+            toast.error(getErrorMessage(error, 'Failed to publish course.'));
         }
     };
 
@@ -122,7 +130,7 @@ export default function TutorDashboard() {
             toast.success('Session is now LIVE!');
             fetchStudioData();
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Cannot start session yet.');
+            toast.error(getErrorMessage(error, 'Cannot start session yet.'));
         }
     };
 
@@ -133,7 +141,7 @@ export default function TutorDashboard() {
             toast.success('Session closed. Reviews unlocked for enrolled students.');
             fetchStudioData();
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Failed to close session.');
+            toast.error(getErrorMessage(error, 'Failed to close session.'));
         }
     };
 
@@ -144,7 +152,7 @@ export default function TutorDashboard() {
             setMyCourses(myCourses.filter(c => c.id !== courseId));
             toast.success('Course deleted successfully.');
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Failed to delete course.');
+            toast.error(getErrorMessage(error, 'Failed to delete course.'));
         }
     };
 
@@ -156,7 +164,7 @@ export default function TutorDashboard() {
             setRosterData(Array.isArray(response.data) ? response.data : []);
         } catch (error) {
             console.error("Failed to fetch roster", error);
-            toast.error("Could not load the student roster.");
+            toast.error(getErrorMessage(error, "Could not load the student roster."));
         } finally {
             setLoadingRoster(false);
         }
@@ -209,6 +217,23 @@ export default function TutorDashboard() {
                 maxSeats: parseInt(s.maxSeats) || 1,
             }));
 
+            // Validate slot validity
+            for (const s of formattedSlots) {
+                if (s.startTime && s.endTime) {
+                    if (new Date(s.endTime) <= new Date(s.startTime)) {
+                        toast.error('End time must be after start time for each slot.');
+                        setSavingEdit(false);
+                        return;
+                    }
+                    // If newly created slot, enforce >= 15 min advance
+                    if (!s.id && new Date(s.startTime).getTime() < Date.now() + 15 * 60 * 1000) {
+                        toast.error('New session slots must be scheduled at least 15 minutes in advance.');
+                        setSavingEdit(false);
+                        return;
+                    }
+                }
+            }
+
             const payload = { ...editForm, slots: formattedSlots };
             const res = await api.put(`/courses/${editingCourse.id}/user/${user.id}`, payload);
 
@@ -216,7 +241,7 @@ export default function TutorDashboard() {
             toast.success('Course updated successfully!');
             handleCloseEdit();
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Failed to save course changes.');
+            toast.error(getErrorMessage(error, 'Failed to save course changes.'));
         } finally {
             setSavingEdit(false);
         }
@@ -244,7 +269,7 @@ export default function TutorDashboard() {
             setIsEditingProfile(false);
             toast.success("Profile updated successfully!");
         } catch (error) {
-            toast.error("Failed to update profile.");
+            toast.error(getErrorMessage(error, "Failed to update profile."));
         } finally {
             setSavingProfile(false);
         }
@@ -260,8 +285,8 @@ export default function TutorDashboard() {
             const res = await api.post("/upload", uploadData, { headers: { "Content-Type": "multipart/form-data" } });
             setProfileForm(prev => ({ ...prev, avatarUrl: res.data.url }));
             toast.success("Image uploaded!");
-        } catch {
-            toast.error("Upload failed.");
+        } catch (error) {
+            toast.error(getErrorMessage(error, "Upload failed."));
         } finally {
             setUploadingAvatar(false);
         }
@@ -382,7 +407,7 @@ export default function TutorDashboard() {
                                 <Users size={16} color="#00C2CB" />
                             </div>
                             <span style={{ fontSize: 26, fontWeight: 700, color: '#f1f1f1' }}>{totalSubscribers}</span>
-                            <span style={{ fontSize: 11, color: '#777' }}>Followers on FLUX</span>
+                            <span style={{ fontSize: 11, color: '#777' }}>Followers on Hive</span>
                         </div>
 
                         <div style={{
@@ -694,8 +719,8 @@ export default function TutorDashboard() {
                                                             const res = await api.post('/upload', uploadData, { headers: { 'Content-Type': 'multipart/form-data' } });
                                                             setFormData({ ...formData, thumbnailUrl: res.data.url });
                                                             toast.success("Thumbnail uploaded!");
-                                                        } catch {
-                                                            toast.error("Thumbnail upload failed.");
+                                                        } catch (error) {
+                                                            toast.error(getErrorMessage(error, "Thumbnail upload failed."));
                                                         }
                                                     }}
                                                 />
@@ -783,7 +808,7 @@ export default function TutorDashboard() {
                                 <BookOpen size={40} color="#555" style={{ margin: '0 auto 12px' }} />
                                 <h3 style={{ fontSize: 16, fontWeight: 600, color: '#eee', margin: '0 0 6px' }}>No courses published yet</h3>
                                 <p style={{ fontSize: 13, color: '#888', margin: '0 0 16px', maxWidth: 400, marginLeft: 'auto', marginRight: 'auto' }}>
-                                    Start tutoring on FLUX by publishing your first course. Share your knowledge with peers!
+                                    Start tutoring on Hive by publishing your first course. Share your knowledge with peers!
                                 </p>
                                 <button
                                     onClick={() => setIsCreating(true)}
@@ -875,14 +900,16 @@ export default function TutorDashboard() {
                                                                 const start = parseSafeDate(slot.startTime);
                                                                 const end   = parseSafeDate(slot.endTime);
                                                                 const now = new Date();
-                                                                const canStart = slot.sessionStatus === 'SCHEDULED' && start && (start - now) <= 15 * 60 * 1000;
+                                                                const status = slot.sessionStatus || slot.status || 'SCHEDULED';
+                                                                const canStart = status === 'SCHEDULED' && start && (start - now) <= 15 * 60 * 1000;
                                                                 const statusColors = {
                                                                     SCHEDULED: { bg: 'rgba(250,204,21,0.15)', color: '#facc15' },
                                                                     LIVE:      { bg: 'rgba(74,222,128,0.15)', color: '#4ade80' },
+                                                                    COMPLETED: { bg: 'rgba(148,163,184,0.15)', color: '#94a3b8' },
                                                                     CLOSED:    { bg: 'rgba(148,163,184,0.15)', color: '#94a3b8' },
                                                                     EXPIRED:   { bg: 'rgba(239,68,68,0.1)',   color: '#888' },
                                                                 };
-                                                                const sc = statusColors[slot.sessionStatus] || statusColors.SCHEDULED;
+                                                                const sc = statusColors[status] || { bg: 'rgba(148,163,184,0.15)', color: '#94a3b8' };
                                                                 return (
                                                                     <div key={slot.id} style={{ background: '#1a1a1a', borderRadius: 6, padding: 8, border: '1px solid #2a2a2a' }}>
                                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
@@ -892,7 +919,7 @@ export default function TutorDashboard() {
                                                                                 {formatSafeTimeRange(slot.startTime, slot.endTime)}
                                                                             </span>
                                                                             <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: sc.bg, color: sc.color }}>
-                                                                                {slot.sessionStatus}
+                                                                                {status}
                                                                             </span>
                                                                         </div>
                                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -900,7 +927,7 @@ export default function TutorDashboard() {
                                                                                 {slot.currentEnrolled}/{slot.maxSeats} enrolled
                                                                             </span>
                                                                             <div style={{ display: 'flex', gap: 6 }}>
-                                                                                {slot.sessionStatus === 'SCHEDULED' && (
+                                                                                {status === 'SCHEDULED' && (
                                                                                     <button
                                                                                         onClick={() => handleStartSession(slot.id)}
                                                                                         disabled={!canStart}
@@ -916,7 +943,7 @@ export default function TutorDashboard() {
                                                                                         ▶ Start
                                                                                     </button>
                                                                                 )}
-                                                                                {slot.sessionStatus === 'LIVE' && (
+                                                                                {status === 'LIVE' && (
                                                                                     <button
                                                                                         onClick={() => handleCloseSession(slot.id)}
                                                                                         style={{
@@ -1050,7 +1077,7 @@ export default function TutorDashboard() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, borderBottom: '1px solid #272727', paddingBottom: 16 }}>
                             <div>
                                 <h2 style={{ fontSize: 18, fontWeight: 600, color: '#f1f1f1', margin: 0 }}>Creator Profile</h2>
-                                <p style={{ fontSize: 12, color: '#888', margin: '4px 0 0' }}>Your identity across FLUX. Students see this information on your course cards and profile.</p>
+                                <p style={{ fontSize: 12, color: '#888', margin: '4px 0 0' }}>Your identity across Hive. Students see this information on your course cards and profile.</p>
                             </div>
                             <button
                                 onClick={() => setIsEditingProfile(!isEditingProfile)}

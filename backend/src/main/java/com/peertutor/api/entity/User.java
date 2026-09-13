@@ -47,6 +47,39 @@ public class User implements UserDetails {
 
     private String repositoryUrl;
 
+    @Builder.Default
+    private String timezone = "Asia/Kolkata (IST, UTC+5:30)";
+
+    @Builder.Default
+    private String timeFormat = "12h";
+
+    @Builder.Default
+    private Boolean emailNotifs60m = true;
+
+    @Builder.Default
+    private Boolean emailNotifsNewCourses = true;
+
+    @Builder.Default
+    private Boolean emailNotifsSecurity = true;
+
+    private String payoutUpi;
+
+    private String payoutBank;
+
+    // ── Email Verification / OTP ──────────────────────────────────────────────
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean isEmailVerified = false;
+
+    private String otpCode;
+
+    private LocalDateTime otpExpiryTime;
+
+    // ── Password Reset ────────────────────────────────────────────────────────
+    private String resetToken;
+
+    private LocalDateTime resetTokenExpiry;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
@@ -94,6 +127,7 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        // Unverified accounts cannot authenticate via Spring Security
+        return isEmailVerified;
     }
 }

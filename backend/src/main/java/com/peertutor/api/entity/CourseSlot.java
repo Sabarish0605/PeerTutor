@@ -42,4 +42,7 @@ public class CourseSlot {
     @Column(name = "session_status", nullable = false)
     @Builder.Default
     private String sessionStatus = "SCHEDULED";
+
+    @Version
+    private Long version;
 }

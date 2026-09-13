@@ -27,10 +27,6 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     }
 
     if (allowedRoles && !allowedRoles.includes(user.role)) {
-        if (user.role === 'STUDENT' && location.pathname.startsWith('/tutor/dashboard')) {
-            toast('Please upgrade to a tutor first!', { icon: '🎓' });
-            return <Navigate to="/tutor/onboarding" replace />;
-        }
         toast.error("You do not have permission to access this page.");
         return <Navigate to="/discover" replace />;
     }

@@ -106,7 +106,8 @@ export function formatSafeTimeRange(startTime, endTime) {
  */
 export function isSlotExpired(slot) {
     if (!slot) return true;
-    if (slot.sessionStatus === 'EXPIRED' || slot.sessionStatus === 'CLOSED') {
+    const status = slot.sessionStatus || slot.status;
+    if (status === 'EXPIRED' || status === 'CLOSED' || status === 'COMPLETED') {
         return true;
     }
     const start = parseSafeDate(slot.startTime || slot.slotDateTime);
@@ -123,3 +124,36 @@ export function isSlotExpired(slot) {
 export function isSlotUpcoming(slot) {
     return !isSlotExpired(slot);
 }
+
+/**
+ * Calculates comprehensive slot metrics for a course card.
+ * Distinguishes between courses with No Upcoming Sessions vs Truly Fully Booked / Sold Out courses.
+ *
+ * @param {object} course
+ * @returns {{ totalUpcomingSlots: number, seatsLeft: number, isSoldOut: boolean, hasNoUpcoming: boolean }}
+ */
+export function getCourseSlotStats(course) {
+    if (!course?.slots || !Array.isArray(course.slots) || course.slots.length === 0) {
+        return { totalUpcomingSlots: 0, seatsLeft: 0, isSoldOut: false, hasNoUpcoming: true };
+    }
+
+    const upcoming = course.slots.filter(sl => {
+        const s = sl.sessionStatus || sl.status;
+        return !isSlotExpired(sl) && s !== 'CLOSED' && s !== 'EXPIRED' && s !== 'COMPLETED';
+    });
+
+    if (upcoming.length === 0) {
+        return { totalUpcomingSlots: 0, seatsLeft: 0, isSoldOut: false, hasNoUpcoming: true };
+    }
+
+    const seatsLeft = upcoming.reduce((sum, sl) => sum + Math.max(0, (sl.maxSeats || 0) - (sl.currentEnrolled || 0)), 0);
+    const isSoldOut = seatsLeft === 0;
+
+    return {
+        totalUpcomingSlots: upcoming.length,
+        seatsLeft,
+        isSoldOut,
+        hasNoUpcoming: false
+    };
+}
+
