@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://peer-tutor-alpha.vercel.app/sitemap.xml
